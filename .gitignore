@@ -1,0 +1,173 @@
+# ============================================
+# Orchestraty .gitignore
+# ============================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+*.whl
+pip-log.txt
+pip-delete-this-directory.txt
+.Python
+develop-eggs/
+lib/
+lib64/
+sdist/
+var/
+wheels/
+*.pyo
+*.pyd
+MANIFEST
+
+# --- Virtual Environments ---
+.venv/
+venv/
+ENV/
+env/
+.conda/
+
+# --- Environment / Secrets ---
+.env
+.env.local
+.env.staging
+.env.production
+*.pem
+*.key
+*.crt
+
+# --- IDE / Editors ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+.spyderproject
+.spyproject
+.ropeproject
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+Icon?
+
+# --- Testing / Coverage ---
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.pytest_cache/
+.hypothesis/
+nosetests.xml
+
+# --- Type Checkers ---
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+.pyre/
+
+# --- Docker ---
+docker-compose.override.yml
+*.tar
+
+# --- Streamlit ---
+.streamlit/
+
+# --- Test Data ---
+test_data/
+
+# --- Node / Frontend ---
+node_modules/
+dist-website/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.next/
+out/
+.nuxt/
+.cache/
+yarn.lock
+
+# --- Alembic ---
+alembic/versions/__pycache__/
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Data / Uploads / ML Artifacts ---
+*.sqlite3
+*.db
+uploads/
+*.h5
+*.hdf5
+*.pkl
+*.joblib
+*.pt
+*.pth
+*.onnx
+mlruns/
+mlartifacts/
+
+# --- Terraform ---
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+
+# --- Kubernetes ---
+kubeconfig
+*.kubeconfig
+
+# --- Session tokens (frontend persistence) ---
+.orchestraty_session
+.orchestraty_admin_session
+
+# --- Celery ---
+celerybeat-schedule
+celerybeat-schedule.db
+celerybeat.pid
+celeryev.pid
+
+# --- Sentence Transformers / HuggingFace ---
+.sentence_transformers/
+.cache/huggingface/
+sentence-transformers/
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+*.ipynb_checkpoints/
+
+# --- MinIO / Qdrant local data (outside Docker) ---
+minio_data/
+qdrant_data/
+postgres_data/
+
+# --- CLIP / Transformers model cache ---
+.transformers_cache/
+models/
+*.safetensors
+*.bin
+
+# --- Misc ---
+*.bak
+*.tmp
+*.temp
+.cache/
