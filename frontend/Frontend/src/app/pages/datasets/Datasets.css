@@ -1,0 +1,379 @@
+/* ━━━ Datasets page — inline preview cards ━━━ */
+
+/* Sticky page header — keeps the "+ New Dataset" button visible while
+   scrolling so users never lose their upload affordance. */
+.ds-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+  padding: 14px 0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: linear-gradient(to bottom, var(--dash-bg, #121212) 80%, transparent);
+  backdrop-filter: blur(6px);
+}
+.ds-header h1 { font-size: 26px; font-weight: 700; margin: 0; color: var(--dash-text); letter-spacing: -0.02em; }
+.ds-header p { color: var(--dash-text-secondary); font-size: 14px; margin: 4px 0 0; }
+.ds-header__add { flex-shrink: 0; }
+
+/* "Add another dataset" tile — sits at the end of the dataset list so
+   adding more is always one click away, no matter how far the user has
+   scrolled. */
+.ds-add-tile {
+  background: transparent;
+  border: 2px dashed var(--dash-border);
+  border-radius: 16px;
+  padding: 22px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--dash-text-muted);
+  transition: all 0.18s ease;
+  text-align: left;
+}
+.ds-add-tile:hover {
+  border-color: var(--dash-primary);
+  background: rgba(29, 185, 84, 0.04);
+  color: var(--dash-primary);
+  transform: translateY(-1px);
+}
+.ds-add-tile__plus {
+  width: 38px; height: 38px;
+  border-radius: 11px;
+  background: rgba(29, 185, 84, 0.08);
+  color: var(--dash-primary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 300;
+  flex-shrink: 0;
+}
+.ds-add-tile:hover .ds-add-tile__plus {
+  background: rgba(29, 185, 84, 0.08);
+}
+.ds-add-tile__label {
+  font-size: 15px; font-weight: 600; color: inherit;
+}
+.ds-add-tile__sub {
+  font-size: 12px; color: var(--dash-text-muted); margin-left: auto;
+}
+
+.ds-list { display: flex; flex-direction: column; gap: 14px; }
+
+.ds-card {
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  border-radius: 16px;
+  padding: 18px 20px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.ds-card:hover {
+  border-color: rgba(29, 185, 84,0.4);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.07);
+}
+
+.ds-card__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.ds-card__icon {
+  width: 42px; height: 42px;
+  border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+.ds-card__icon--tabular { background: linear-gradient(135deg, #1DB954, #1ED760); }
+.ds-card__icon--image   { background: linear-gradient(135deg, #1ED760, #1AA34A); }
+
+.ds-card__text { flex: 1; min-width: 0; }
+
+.ds-card__name {
+  font-size: 16px; font-weight: 700;
+  color: var(--dash-text);
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+.ds-card__name:hover { color: var(--dash-primary); }
+
+.ds-card__meta {
+  font-size: 12.5px;
+  color: var(--dash-text-muted);
+  margin-top: 2px;
+  display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center;
+}
+.ds-card__meta-sep { color: var(--dash-border); }
+
+.ds-card__open {
+  font-size: 12.5px; font-weight: 600;
+  color: var(--dash-primary);
+  text-decoration: none;
+  white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 4px;
+  transition: gap 0.15s ease;
+}
+.ds-card__open:hover { gap: 8px; }
+
+/* Delete dataset (red trashcan icon) — admin-gated on the backend but the
+   button shows for everyone; non-admins just get a clear permission error. */
+.ds-card__delete {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px;
+  background: transparent;
+  border: 1px solid var(--dash-border);
+  border-radius: 8px;
+  color: var(--dash-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: 4px;
+  transition: all 0.15s ease;
+}
+.ds-card__delete:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.4);
+  color: #dc2626;
+}
+.ds-card__delete:disabled {
+  opacity: 0.4;
+  cursor: wait;
+}
+
+/* ── Tabular preview table ── */
+.ds-preview {
+  border: 1px solid var(--dash-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--dash-surface-hover);
+  position: relative;
+}
+
+/* Always-visible left/right scroll arrows. Sit on top of the scroll
+   container and only render when there's content to scroll to in that
+   direction (handled via React state in PreviewScroller). Sized big and
+   high-contrast so users actually notice them. */
+.ds-preview-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--dash-primary);
+  border: 2px solid #fff;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  z-index: 4;
+  padding: 0;
+  transition: all 0.15s ease;
+}
+.ds-preview-nav:hover {
+  transform: translateY(-50%) scale(1.12);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+.ds-preview-nav--left { left: 10px; }
+.ds-preview-nav--right { right: 10px; }
+
+/* Custom always-visible horizontal scrollbar. We render our own instead of
+   relying on the native scrollbar because macOS / Chrome overlay-mode hide
+   it until you start scrolling — which is exactly when the user goes "where
+   is the scrollbar?". */
+.ds-preview-scrollbar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 6px;
+  height: 10px;
+  background: rgba(29, 185, 84, 0.08);
+  border-radius: 5px;
+  z-index: 3;
+  pointer-events: auto;
+}
+.ds-preview-scrollbar__thumb {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #1ED760, #1DB954);
+  border-radius: 5px;
+  cursor: grab;
+  transition: opacity 0.15s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.ds-preview-scrollbar__thumb:hover { opacity: 0.85; }
+.ds-preview-scrollbar__thumb:active { cursor: grabbing; }
+
+/* Keep the table away from the scrollbar so the last row doesn't sit
+   underneath it. */
+.ds-preview-scroll {
+  padding-bottom: 22px;
+}
+/* Table sizes to content so wide datasets force a horizontal scroll on the
+   .ds-preview-scroll wrapper rather than getting columns squashed off-screen. */
+.ds-preview-table { border-collapse: collapse; font-size: 12px; min-width: max-content; width: max-content; }
+.ds-preview-table th {
+  text-align: left;
+  padding: 9px 12px;
+  background: rgba(29, 185, 84, 0.04);
+  border-bottom: 1px solid var(--dash-border);
+  font-weight: 700;
+  font-size: 10.5px;
+  color: var(--dash-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.ds-preview-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--dash-border);
+  color: var(--dash-text-secondary);
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ds-preview-table tr:last-child td { border-bottom: none; }
+
+/* Horizontal scrollbar wrapper. max-height keeps the preview from eating the
+   page on huge schemas. */
+.ds-preview-scroll {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 420px;
+  /* Firefox: 'auto' (not 'thin') so the scrollbar is more visible. */
+  scrollbar-width: auto;
+}
+/* Right-edge fade: a static overlay positioned over the visible area to hint
+   that more columns are off to the right. Sits ABOVE the table rows but the
+   scrollbar (which is anchored to the bottom of the container, behind it) is
+   not touched because the fade doesn't extend below the table area. */
+.ds-preview { position: relative; }
+.ds-preview::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0; bottom: 16px;       /* clears the scrollbar at the bottom */
+  width: 28px;
+  background: linear-gradient(to right, transparent, var(--dash-surface-hover));
+  pointer-events: none;
+  border-radius: 0 12px 12px 0;
+}
+/* WebKit: a fatter, always-visible violet scrollbar so users see it without
+   hovering. Track is faintly tinted so it reads as a real scroll affordance
+   even at rest. */
+.ds-preview-scroll::-webkit-scrollbar { height: 14px; width: 14px; }
+.ds-preview-scroll::-webkit-scrollbar-track {
+  background: rgba(29, 185, 84, 0.06);
+  border-radius: 7px;
+}
+.ds-preview-scroll::-webkit-scrollbar-thumb {
+  background: rgba(22, 22, 22, 0.55);
+  border-radius: 7px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.ds-preview-scroll::-webkit-scrollbar-thumb:hover { background: rgba(22, 22, 22, 0.85); background-clip: padding-box; }
+
+/* Same scroll treatment for the Structuring Before/After tables. */
+.struct-ba__scroll { scrollbar-width: auto; }
+.struct-ba__scroll::-webkit-scrollbar { height: 14px; width: 14px; }
+.struct-ba__scroll::-webkit-scrollbar-track {
+  background: rgba(29, 185, 84, 0.06); border-radius: 7px;
+}
+.struct-ba__scroll::-webkit-scrollbar-thumb {
+  background: rgba(22, 22, 22, 0.55); border-radius: 7px;
+  border: 2px solid transparent; background-clip: padding-box;
+}
+.struct-ba__scroll::-webkit-scrollbar-thumb:hover { background: rgba(22, 22, 22, 0.85); background-clip: padding-box; }
+
+.ds-preview-foot {
+  padding: 6px 4px 0;
+  font-size: 11.5px;
+  color: var(--dash-text-muted);
+  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+}
+
+.ds-preview-empty {
+  padding: 22px;
+  text-align: center;
+  color: var(--dash-text-muted);
+  font-size: 13px;
+  background: var(--dash-surface-hover);
+  border: 1px dashed var(--dash-border);
+  border-radius: 12px;
+}
+
+/* ── Image strip ── */
+.ds-image-strip {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+.ds-image-strip__cell {
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  background: var(--dash-surface-hover);
+  border: 1px solid var(--dash-border);
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.ds-image-strip__cell img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.ds-image-strip__more {
+  font-size: 12px; font-weight: 700;
+  color: var(--dash-text-secondary);
+}
+.ds-image-strip__placeholder {
+  font-size: 10.5px; color: var(--dash-text-muted);
+}
+
+@media (max-width: 720px) {
+  .ds-image-strip { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 480px) {
+  .ds-image-strip { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ── Pill statuses (status column was previously a badge) ── */
+.ds-status {
+  font-size: 11px; font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 100px;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+.ds-status--ready     { background: rgba(5,150,105,0.1); color: #047857; }
+.ds-status--processed { background: rgba(29, 185, 84, 0.08); color: #1AA34A; }
+.ds-status--labeled   { background: rgba(29, 185, 84, 0.08); color: #1AA34A; }
+.ds-status--reviewed  { background: rgba(29, 185, 84, 0.08); color: #1AA34A; }
+.ds-status--raw       { background: var(--dash-surface-hover); color: var(--dash-text-secondary); }
+
+/* Image dataset: folder/file pick + view-all gallery */
+.ds-imgpick { display: flex; gap: 10px; flex-wrap: wrap; }
+.ds-imgpick__btn { cursor: pointer; position: relative; }
+.ds-imgpick__btn input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.ds-image-strip__more { cursor: pointer; }
+.ds-gallery-modal { max-width: 940px; width: 92vw; max-height: 86vh; display: flex; flex-direction: column; }
+.ds-gallery-modal__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.ds-gallery-modal__head h2 { margin: 0; font-size: 18px; }
+.ds-gallery-modal__close { background: none; border: none; font-size: 18px; line-height: 1; cursor: pointer; color: var(--dash-text-muted); padding: 4px 6px; }
+.ds-gallery-modal__close:hover { color: var(--dash-text); }
+.ds-gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; overflow-y: auto; padding: 2px 4px 4px 2px; }
+.ds-gallery-tile { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ds-gallery-tile img, .ds-gallery-tile__ph { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 8px; background: var(--dash-bg, #0a0a0a); display: block; }
+.ds-gallery-tile__ph { display: flex; align-items: center; justify-content: center; color: var(--dash-text-muted); }
+.ds-gallery-tile__name { font-size: 10px; color: var(--dash-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-gallery-loading { padding: 14px; text-align: center; color: var(--dash-text-muted); font-size: 12.5px; }
