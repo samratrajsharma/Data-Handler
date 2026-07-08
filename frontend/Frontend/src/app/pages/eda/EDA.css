@@ -1,0 +1,113 @@
+/* ── EDA Summary Stats ── */
+.eda-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.eda-summary__item {
+  text-align: center;
+  padding: 10px 6px;
+  background: var(--dash-surface-hover);
+  border-radius: 8px;
+}
+.eda-summary__value {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--dash-text);
+  line-height: 1.2;
+}
+.eda-summary__label {
+  display: block;
+  font-size: 11px;
+  color: var(--dash-text-muted);
+  margin-top: 2px;
+}
+
+/* ── Sections ── */
+.eda-section { margin-bottom: 24px; }
+.eda-section h4 { font-size: 14px; font-weight: 700; color: var(--dash-text); margin-bottom: 12px; }
+.eda-overview { padding-top: 8px; }
+.eda-no-data { font-size: 13px; color: var(--dash-text-muted); font-style: italic; }
+
+/* ── Bar Chart ── */
+.eda-bar-chart { display: flex; flex-direction: column; gap: 6px; }
+.eda-bar-chart__row { display: flex; align-items: center; gap: 10px; }
+.eda-bar-chart__label { width: 100px; font-size: 12px; color: var(--dash-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+.eda-bar-chart__track { flex: 1; height: 20px; background: var(--dash-surface-hover); border-radius: 4px; overflow: hidden; }
+.eda-bar-chart__fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; min-width: 2px; }
+.eda-bar-chart__value { font-size: 12px; font-weight: 600; color: var(--dash-text); width: 60px; text-align: right; flex-shrink: 0; }
+
+/* ── Data Type Chart ── */
+.eda-dtype-chart__bar { display: flex; height: 28px; border-radius: 6px; overflow: hidden; gap: 2px; }
+.eda-dtype-chart__segment { transition: width 0.4s ease; min-width: 4px; }
+.eda-dtype-chart__legend { display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap; }
+.eda-dtype-chart__legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dash-text-secondary); }
+.eda-dtype-chart__dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── Correlation Matrix ── */
+.eda-corr-matrix { overflow-x: auto; }
+.eda-corr-table { border-collapse: collapse; font-size: 11px; width: 100%; }
+.eda-corr-table th, .eda-corr-table td { padding: 6px 8px; text-align: center; border: 1px solid var(--dash-border); min-width: 52px; }
+.eda-corr-table th { font-weight: 600; color: var(--dash-text-secondary); background: var(--dash-surface-hover); white-space: nowrap; }
+.eda-corr-table__row-label { font-weight: 600; color: var(--dash-text-secondary); text-align: left !important; white-space: nowrap; }
+.eda-corr-table td { transition: background 0.15s; font-variant-numeric: tabular-nums; }
+
+/* ── Top Correlations ── */
+.eda-top-corrs { display: flex; flex-direction: column; gap: 4px; }
+.eda-top-corrs__row { display: flex; justify-content: space-between; padding: 6px 12px; background: var(--dash-surface-hover); border-radius: 6px; font-size: 13px; color: var(--dash-text); }
+
+/* ── Box Plots ── */
+.eda-boxplots { display: flex; flex-direction: column; gap: 12px; }
+.eda-boxplot-row { display: flex; align-items: center; gap: 12px; }
+.eda-boxplot-row__label { width: 120px; font-size: 12px; font-weight: 600; color: var(--dash-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+.eda-boxplot-row__track { flex: 1; height: 24px; position: relative; background: var(--dash-surface-hover); border-radius: 4px; }
+.eda-boxplot-row__range { font-size: 11px; color: var(--dash-text-muted); width: 100px; text-align: right; flex-shrink: 0; }
+.eda-boxplot__whisker { position: absolute; top: 50%; height: 2px; background: #94a3b8; transform: translateY(-50%); }
+.eda-boxplot__box { position: absolute; top: 3px; bottom: 3px; background: rgba(29, 185, 84, 0.08); border: 1px solid #1ED760; border-radius: 3px; }
+.eda-boxplot__median { position: absolute; top: 2px; bottom: 2px; width: 2px; background: #1ED760; transform: translateX(-50%); }
+
+/* ── Column Cards ── */
+.eda-columns-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.eda-col-card { background: var(--dash-surface-hover); border: 1px solid var(--dash-border); border-radius: 10px; padding: 14px; }
+.eda-col-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+/* Allow long column names / descriptions to wrap onto multiple lines
+   instead of being silently truncated with an ellipsis. The card stretches
+   vertically as needed; hovering still shows the full text via the title. */
+.eda-col-card__name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dash-text);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  flex: 1;
+  min-width: 0;
+}
+.eda-col-card__stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.eda-col-card__stat { padding: 4px 0; font-size: 12px; color: var(--dash-text-secondary); }
+.eda-col-card__stat-label { display: block; font-size: 10px; color: var(--dash-text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ── Warnings ── */
+.eda-warnings { display: flex; flex-direction: column; gap: 6px; }
+.eda-warning-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 12px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.15); border-radius: 8px; font-size: 13px; color: var(--dash-text-secondary); }
+.eda-warning-icon { color: #f59e0b; font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+
+/* ── Raw JSON ── */
+.eda-json { font-size: 12px; color: var(--dash-text-secondary); overflow: auto; max-height: 400px; white-space: pre-wrap; background: var(--dash-surface-hover); padding: 12px; border-radius: 8px; border: 1px solid var(--dash-border); }
+
+/* ── Badges ── */
+.badge--sm { font-size: 10px; padding: 2px 8px; }
+.badge--secondary { background: rgba(107, 114, 128, 0.1); color: #a7a7a7; }
+
+@media (max-width: 768px) {
+  .eda-summary { grid-template-columns: repeat(2, 1fr); }
+  .eda-columns-grid { grid-template-columns: 1fr; }
+  .eda-col-card__stats { grid-template-columns: repeat(2, 1fr); }
+}
