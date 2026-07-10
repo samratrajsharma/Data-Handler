@@ -1,0 +1,144 @@
+/* Install command pill — homage to the Claude Code install bar.
+   The visual goal is a single floating capsule with two distinct
+   regions: a CTA button on the left and a copy-able command on the
+   right, separated by a faint vertical divider. */
+
+.installpill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 720px;
+}
+
+.installpill__shell {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 6px 6px 6px 6px;
+  width: 100%;
+  border: 1px solid rgba(29, 185, 84, 0.30);
+  background:
+    linear-gradient(135deg, rgba(22, 22, 22, 0.78), rgba(22, 22, 22, 0.85)),
+    radial-gradient(120% 120% at 0% 0%, rgba(29, 185, 84, 0.08), transparent 55%);
+  border-radius: 18px;
+  box-shadow:
+    0 12px 40px -16px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.installpill__shell:hover {
+  border-color: rgba(30, 215, 96, 0.50);
+  box-shadow:
+    0 16px 50px -16px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Left CTA — looks button-y but doesn't do anything yet. The chevron
+   hints at "more install methods coming" without committing to one. */
+.installpill__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 13px;
+  background: rgba(29, 185, 84, 0.08);
+  color: #4ADE80;
+  font-family: 'Montserrat', system-ui, sans-serif;
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: default;          /* not a real dropdown yet */
+  user-select: none;
+  white-space: nowrap;
+}
+.installpill__cta:hover { background: rgba(29, 185, 84, 0.08); }
+.installpill__cta svg { opacity: 0.65; }
+
+.installpill__divider {
+  width: 1px;
+  margin: 8px 12px 8px 12px;
+  background: rgba(29, 185, 84, 0.08);
+}
+
+.installpill__cmd {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 15px;
+  font-weight: 500;
+  color: #4ADE80;
+  letter-spacing: -0.005em;
+  background: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.installpill__copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  margin: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(74, 222, 128, 0.78);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.installpill__copy:hover {
+  background: rgba(29, 185, 84, 0.08);
+  color: #ffffff;
+}
+.installpill__copy:active { transform: scale(0.94); }
+.installpill__copy--ok { color: #7eecb0; }
+
+.installpill__footnote {
+  font-family: 'Montserrat', system-ui, sans-serif;
+  font-size: 14px;
+  color: rgba(74, 222, 128, 0.65);
+  text-decoration: underline;
+  text-decoration-color: rgba(30, 215, 96, 0.40);
+  text-underline-offset: 4px;
+  transition: color 0.15s ease;
+}
+.installpill__footnote:hover { color: #ffffff; }
+
+/* Medium variant used by FinalCTA (smaller / tighter) */
+.installpill--md .installpill__shell { padding: 4px; }
+.installpill--md .installpill__cta { padding: 8px 14px; font-size: 13.5px; }
+.installpill--md .installpill__cmd { font-size: 14px; padding: 0 6px; }
+.installpill--md .installpill__divider { margin: 6px 10px; }
+.installpill--md .installpill__copy { width: 34px; height: 34px; }
+
+/* Stack vertically on tight screens so the command never wraps awkwardly. */
+@media (max-width: 540px) {
+  .installpill__shell {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    border-radius: 14px;
+  }
+  .installpill__cta {
+    justify-content: center;
+    border-radius: 10px;
+  }
+  .installpill__divider {
+    width: auto;
+    height: 1px;
+    margin: 2px 14px;
+  }
+  .installpill__cmd { padding: 6px 12px; justify-content: center; }
+  .installpill__copy { margin: 0 auto 4px; }
+}
