@@ -1,0 +1,238 @@
+/* Phase F — single centered Hero. Big, dark, calm. */
+
+.hero {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 60% at 50% -10%, rgba(29, 185, 84, 0.08), transparent 60%),
+    radial-gradient(100% 60% at 50% 120%, rgba(29, 185, 84, 0.08), transparent 60%),
+    #0d0d0d;
+  padding-top: var(--nav-height);
+  display: flex;
+  align-items: center;
+}
+
+.hero__container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 96px 24px 120px;
+}
+
+.hero__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  text-align: center;
+}
+
+/* "Now / next" marker — small phase chip at the top */
+.hero__release {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(30, 215, 96, 0.22);
+  border-radius: 100px;
+  color: rgba(74, 222, 128, 0.85);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+.hero__release:hover {
+  border-color: rgba(30, 215, 96, 0.48);
+  transform: translateY(-1px);
+}
+.hero__release-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  background: rgba(29, 185, 84, 0.08);
+  color: #4ADE80;
+  border-radius: 100px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hero__release-text { color: rgba(74, 222, 128, 0.78); }
+.hero__release-arrow {
+  opacity: 0.55;
+  transition: transform 0.18s ease;
+}
+.hero__release:hover .hero__release-arrow { transform: translateX(3px); }
+
+/* Spinning Orchestraty mark — sits above the headline as the centerpiece */
+.hero__mark {
+  width: 76px;
+  height: 76px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(60% 60% at 50% 50%, rgba(29, 185, 84, 0.08), rgba(29, 185, 84, 0.08) 70%, transparent 100%),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(30, 215, 96, 0.36);
+  box-shadow:
+    0 14px 36px -12px rgba(0, 0, 0, 0.55),
+    inset 0 0 24px rgba(0, 0, 0, 0.20);
+}
+.hero__mark img {
+  width: 52px;
+  height: 52px;
+  animation: hero-mark-spin 20s linear infinite;
+  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.55));
+}
+
+@keyframes hero-mark-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.hero__headline {
+  font-family: 'Montserrat', system-ui, sans-serif;
+  font-size: clamp(44px, 7vw, 84px);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  color: #f6f3ff;
+  margin: 8px 0 0;
+}
+.hero__headline-line {
+  display: block;
+  color: #f6f3ff;
+}
+.hero__headline-line--accent {
+  background: linear-gradient(95deg, #4ade80 0%, #1ED760 40%, #1ED760 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero__subtext {
+  font-family: 'Montserrat', system-ui, sans-serif;
+  max-width: 640px;
+  margin: 0 auto;
+  font-size: clamp(16px, 1.4vw, 19px);
+  line-height: 1.55;
+  color: rgba(74, 222, 128, 0.75);
+}
+
+.hero__actions {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* "open source · runs locally · no accounts · no telemetry" row under the pill */
+.hero__altpills {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 4px;
+  font-family: 'Montserrat', system-ui, sans-serif;
+  font-size: 13px;
+  color: rgba(30, 215, 96, 0.70);
+}
+.hero__altpill { letter-spacing: 0.01em; }
+.hero__altpill-dot { color: rgba(30, 215, 96, 0.45); }
+
+/* Soft fade into the next section */
+.hero__fade {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 120px;
+  background: linear-gradient(to bottom, transparent, #000000);
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .hero__container { padding: 80px 18px 100px; }
+  .hero__mark { width: 64px; height: 64px; }
+  .hero__mark img { width: 44px; height: 44px; }
+}
+
+/* Big "Take the tour" CTA sitting under the install pill */
+.hero__tour-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 6px;
+  padding: 14px 22px;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(29, 185, 84, 0.08), rgba(29, 185, 84, 0.08));
+  border: 1px solid rgba(29, 185, 84, 0.42);
+  color: #f6f3ff;
+  text-decoration: none;
+  box-shadow: 0 14px 38px -16px rgba(0, 0, 0, 0.55);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.hero__tour-cta:hover {
+  transform: translateY(-2px);
+  border-color: rgba(30, 215, 96, 0.65);
+  box-shadow: 0 22px 48px -18px rgba(0, 0, 0, 0.70);
+}
+.hero__tour-cta-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.10);
+  color: #ffffff;
+}
+.hero__tour-cta-text { text-align: left; line-height: 1.2; }
+.hero__tour-cta-title {
+  display: block;
+  font-family: 'Montserrat', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+}
+.hero__tour-cta-sub {
+  display: block;
+  font-family: 'Montserrat', system-ui, sans-serif;
+  font-size: 12.5px;
+  color: rgba(74, 222, 128, 0.75);
+  margin-top: 2px;
+}
+.hero__tour-cta-arrow {
+  font-size: 20px;
+  color: rgba(74, 222, 128, 0.82);
+  transition: transform 0.18s ease;
+}
+.hero__tour-cta:hover .hero__tour-cta-arrow { transform: translateX(4px); }
+
+.hero__tagline {
+  font-family: 'Montserrat', system-ui, sans-serif;
+  max-width: 600px;
+  margin: 4px auto 0;
+  font-size: clamp(16px, 1.5vw, 20px);
+  line-height: 1.55;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* Reserved space that the full-section canvas paints the big ORCHESTRATY
+   wordmark into. Transparent itself; sized to scale the word. */
+.hero__wordslot {
+  width: 100%;
+  max-width: 980px;
+  height: clamp(150px, 22vh, 260px);
+  margin: 2px auto -4px;
+  pointer-events: none;
+}
+@media (max-width: 640px) {
+  .hero__wordslot { height: clamp(104px, 17vh, 168px); }
+}
