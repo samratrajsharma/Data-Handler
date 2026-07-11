@@ -1,0 +1,15 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+}
+
+/* ─── Cinematic scroll motion (JS-driven, see WebsiteApp.tsx) ──── */
+.deepdive__mock, .deepdive__embed, .deepdive__layers { will-change: transform; }
+
+/* Offset anchored sections so they aren't hidden under the sticky navbar */
+.app [id] { scroll-margin-top: 84px; }
