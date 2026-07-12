@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Orchestraty — Coming soon</title>
-  <meta name="description" content="Orchestraty — a local-first operating system for your data and your code. Coming soon." />
+  <meta name="description" content="Orchestraty — a local-first operating system for your data. Structure, label and search it end to end, on your own machine. Coming soon." />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <style>
@@ -45,7 +45,7 @@
     .loop__flow{stroke-dasharray:10 90;animation:loopFlow 7s linear infinite}
     @keyframes loopFlow{to{stroke-dashoffset:-100}}
     .loop__name{position:absolute;top:50%;transform:translate(-50%,-50%);width:30%;pointer-events:none;display:flex;flex-direction:column;gap:5px;align-items:center;text-align:center}
-    .loop__name--l{left:25%}.loop__name--r{left:75%}
+    .loop__name--c{left:50%}
     .loop__name .nm{font-size:clamp(15px,2.2vw,22px);font-weight:800;color:#fff;line-height:1.06}
     .loop__name .st{font-size:clamp(8.5px,1.4vw,11px);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--g2)}
     .lnode{position:absolute;width:18px;height:18px;transform:translate(-50%,-50%);border-radius:50%;border:0;cursor:pointer;padding:0;
@@ -58,14 +58,14 @@
     .lnode:hover .lnode__tip,.lnode:focus-visible .lnode__tip{opacity:1;visibility:visible}
     .lnode__tip .t{display:block;font-size:13px;font-weight:700;color:#fff;margin-bottom:3px}
     .lnode__tip .d{display:block;font-size:11.5px;line-height:1.45;color:var(--mut)}
-    .loop__steps{display:grid;grid-template-columns:1fr 1fr;gap:26px;width:100%;max-width:780px;margin:clamp(36px,6vh,60px) auto 0}
+    .loop__steps{display:flex;justify-content:center;width:100%;max-width:820px;margin:clamp(36px,6vh,60px) auto 0}
     .loop__col{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:clamp(10px,1.7vw,12.5px);color:#cdcdcd;line-height:1.7}
     .loop__col .a{color:#1ED760;margin:0 5px}
     .loop__cap{max-width:660px;margin:clamp(28px,4vh,44px) auto 0;color:var(--mut);font-size:clamp(14px,2.2vw,16px);line-height:1.6}
     .loop__cap b{color:#fff;font-weight:600}
 
     /* CARDS + notify */
-    .cards{display:grid;grid-template-columns:1fr 1fr;gap:18px;width:100%;max-width:940px;margin:clamp(56px,8vh,96px) auto 34px;padding:0 24px}
+    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;width:100%;max-width:1000px;margin:clamp(56px,8vh,96px) auto 34px;padding:0 24px}
     .card{position:relative;text-align:left;padding:26px 28px;border-radius:18px;border:1px solid var(--bd);
       background:rgba(11,11,11,.72);overflow:hidden;transition:transform .25s,border-color .25s}
     .card::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .3s;pointer-events:none;
@@ -89,15 +89,14 @@
       .cards{grid-template-columns:1fr;gap:14px}
       .hero__inner{gap:18px;padding:56px 20px}
       .loop__steps{max-width:520px;gap:16px}
-      .loop__name{width:46%}.loop__name .nm{font-size:13px}
-      .loop__name--l{left:24%}.loop__name--r{left:76%}
+      .loop__name{width:56%}.loop__name .nm{font-size:14px}
       .lnode__tip{max-width:160px}
     }
   </style>
 </head>
 <body>
   <div class="bggrid"></div>
-  <h1 class="sr-only">Orchestraty — a local-first OS for your data and your code. Coming soon.</h1>
+  <h1 class="sr-only">Orchestraty — a local-first OS for your data. Coming soon.</h1>
 
   <!-- HERO -->
   <section class="hero">
@@ -118,7 +117,7 @@
         </svg>
       </div>
       <div class="wordslot" id="hero-wordslot" aria-hidden="true"></div>
-      <p class="lead">A local-first OS for your data and your code — no cloud, no accounts, nothing leaves your laptop.</p>
+      <p class="lead">A local-first operating system for your data — no cloud, no accounts, nothing leaves your laptop.</p>
       <div class="altpills"><span>Open source</span><span class="dot">·</span><span>Runs locally</span><span class="dot">·</span><span>No accounts</span><span class="dot">·</span><span>No telemetry</span></div>
       <span class="hint">drag your cursor through the nodes — <b>click</b> to scatter the swarm</span>
     </div>
@@ -128,7 +127,7 @@
   <!-- WHAT WE'RE BUILDING -->
   <section class="sys">
     <div class="sys__eyebrow">What we are building</div>
-    <h2 class="sys__title">Two engines, one continuous flow</h2>
+    <h2 class="sys__title">One engine, one continuous flow</h2>
     <div class="loop">
       <div class="loop__stage">
         <svg class="loop__svg" viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -138,47 +137,44 @@
             </linearGradient>
             <filter id="lglow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
           </defs>
-          <path d="M300,100 C200,34 30,34 30,100 C30,166 200,166 300,100 C400,34 570,34 570,100 C570,166 400,166 300,100" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="12"/>
-          <path d="M300,100 C200,34 30,34 30,100 C30,166 200,166 300,100 C400,34 570,34 570,100 C570,166 400,166 300,100" fill="none" stroke="url(#lg)" stroke-width="3" opacity="0.92"/>
-          <path class="loop__flow" d="M300,100 C200,34 30,34 30,100 C30,166 200,166 300,100 C400,34 570,34 570,100 C570,166 400,166 300,100" fill="none" stroke="#1ED760" stroke-width="3" pathLength="100"/>
+          <path d="M50,100 A250,70 0 0 1 550,100 A250,70 0 0 1 50,100" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="12"/>
+          <path d="M50,100 A250,70 0 0 1 550,100 A250,70 0 0 1 50,100" fill="none" stroke="url(#lg)" stroke-width="3" opacity="0.92"/>
+          <path class="loop__flow" d="M50,100 A250,70 0 0 1 550,100 A250,70 0 0 1 50,100" fill="none" stroke="#1ED760" stroke-width="3" pathLength="100"/>
           <circle r="5.5" fill="#1ED760" filter="url(#lglow)">
-            <animateMotion dur="7s" repeatCount="indefinite" path="M300,100 C200,34 30,34 30,100 C30,166 200,166 300,100 C400,34 570,34 570,100 C570,166 400,166 300,100"/>
+            <animateMotion dur="7s" repeatCount="indefinite" path="M50,100 A250,70 0 0 1 550,100 A250,70 0 0 1 50,100"/>
           </circle>
         </svg>
 
-        <div class="loop__name loop__name--l"><span class="nm">Orchestraty</span><span class="st">your data</span></div>
-        <div class="loop__name loop__name--r"><span class="nm">Know Your Code</span><span class="st">your code</span></div>
+        <div class="loop__name loop__name--c"><span class="nm">Orchestraty</span><span class="st">your data</span></div>
 
-        <button class="lnode" style="left:30%;top:27.5%" aria-label="Ingest"><span class="lnode__tip"><span class="t">Ingest</span><span class="d">Bring in CSVs, JSON &amp; folders of images.</span></span></button>
-        <button class="lnode" style="left:11.5%;top:29%" aria-label="Structure"><span class="lnode__tip"><span class="t">Structure</span><span class="d">Auto-profile, score quality, shape the schema.</span></span></button>
-        <button class="lnode lnode--down" style="left:11.5%;top:71%" aria-label="Label"><span class="lnode__tip"><span class="t">Label</span><span class="d">Rules, LLMs &amp; similarity — labeled and merged.</span></span></button>
-        <button class="lnode lnode--down" style="left:30%;top:72.5%" aria-label="Export"><span class="lnode__tip"><span class="t">Export</span><span class="d">Ship clean, labeled datasets anywhere.</span></span></button>
-
-        <button class="lnode" style="left:70%;top:27.5%" aria-label="Connect"><span class="lnode__tip"><span class="t">Connect</span><span class="d">Point it at any repo on your machine.</span></span></button>
-        <button class="lnode" style="left:88.5%;top:29%" aria-label="Track"><span class="lnode__tip"><span class="t">Track</span><span class="d">Capture the codebase over time.</span></span></button>
-        <button class="lnode lnode--down" style="left:88.5%;top:71%" aria-label="Digest"><span class="lnode__tip"><span class="t">Digest</span><span class="d">See what changed — added, removed, refactored.</span></span></button>
-        <button class="lnode lnode--down" style="left:70%;top:72.5%" aria-label="Narrate"><span class="lnode__tip"><span class="t">Narrate</span><span class="d">Turn diffs into a plain-English story.</span></span></button>
-
-        <button class="lnode lnode--down" style="left:50%;top:50%" aria-label="One local-first core"><span class="lnode__tip"><span class="t">One local-first core</span><span class="d">Both engines, one core — on your machine.</span></span></button>
+        <button class="lnode" style="left:50%;top:15%" aria-label="Ingest"><span class="lnode__tip"><span class="t">Ingest</span><span class="d">Bring in CSVs, JSON &amp; folders of images — schema detected for you.</span></span></button>
+        <button class="lnode" style="left:86%;top:32.5%" aria-label="Structure"><span class="lnode__tip"><span class="t">Structure</span><span class="d">Clean it, type it, version it — reproducible every run.</span></span></button>
+        <button class="lnode lnode--down" style="left:86%;top:67.5%" aria-label="Profile"><span class="lnode__tip"><span class="t">Profile</span><span class="d">Statistical EDA, quality score, embeddings &amp; clusters.</span></span></button>
+        <button class="lnode lnode--down" style="left:50%;top:85%" aria-label="Label"><span class="lnode__tip"><span class="t">Label</span><span class="d">Rules, your own LLM &amp; similarity — labeled and merged.</span></span></button>
+        <button class="lnode lnode--down" style="left:14%;top:67.5%" aria-label="Review"><span class="lnode__tip"><span class="t">Review</span><span class="d">Human-in-the-loop checks before anything ships.</span></span></button>
+        <button class="lnode" style="left:14%;top:32.5%" aria-label="Export"><span class="lnode__tip"><span class="t">Export</span><span class="d">Ship clean, labeled, model-ready datasets anywhere.</span></span></button>
       </div>
 
       <div class="loop__steps">
-        <div class="loop__col">Ingest <span class="a">&rarr;</span> Structure <span class="a">&rarr;</span> Label <span class="a">&rarr;</span> Export</div>
-        <div class="loop__col">Connect <span class="a">&rarr;</span> Track <span class="a">&rarr;</span> Digest <span class="a">&rarr;</span> Narrate</div>
+        <div class="loop__col">Ingest <span class="a">&rarr;</span> Structure <span class="a">&rarr;</span> Profile <span class="a">&rarr;</span> Label <span class="a">&rarr;</span> Review <span class="a">&rarr;</span> Export</div>
       </div>
-      <p class="loop__cap">Two engines — <b>your data</b> and <b>your code</b> — on one local-first OS. Different jobs, one continuous flow.</p>
+      <p class="loop__cap">One engine for <b>your data</b> — raw files in, model-ready datasets out. On your own machine, in a single continuous flow.</p>
     </div>
   </section>
 
   <!-- CARDS -->
   <div class="cards" id="cards">
     <div class="card">
-      <h2>Orchestraty <span class="pill">Phase 3 · building</span></h2>
-      <p>A local-first data operating system — structure, label and search your data end to end, on your own machine.</p>
+      <h2>The platform <span class="pill">Phase 3 · building</span></h2>
+      <p>Structure, profile, label and search your data end to end — six engines in one local app.</p>
     </div>
     <div class="card">
-      <h2>Know Your Code <span class="pill pill--soon">In design</span></h2>
-      <p>Codebase intelligence that maps your project and tracks how it changes over time.</p>
+      <h2>Bring your own LLM</h2>
+      <p>OpenAI, Anthropic, Groq, or a local Ollama model. Your keys, your machine, your rules.</p>
+    </div>
+    <div class="card">
+      <h2>Open source</h2>
+      <p>Free and inspectable. No cloud, no accounts, no telemetry — nothing leaves your laptop.</p>
     </div>
   </div>
 

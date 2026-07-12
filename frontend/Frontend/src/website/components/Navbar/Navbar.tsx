@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import './Navbar.css';
 import OrchestrateIcon from '../../../shared/Logo/AntigravityLogo';
 import { DOCS_URL, GITHUB_URL } from '../../site-links';
@@ -50,9 +50,6 @@ const Navbar: React.FC = () => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [kycHover, setKycHover] = useState(false);
-  const { pathname } = useLocation();
-  const onKyc = pathname === '/knowyourcode';
   // Hover-intent: small delay before closing so the cursor can travel into
   // the dropdown without it vanishing.
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -113,37 +110,6 @@ const Navbar: React.FC = () => {
 
         <div className="navbar__cta">
           <Link to={DOCS_URL} className="navbar__cta-link">Docs</Link>
-
-          {/* Context CTA — Launch KYC elsewhere, Return to Orchestraty on the KYC page. */}
-          {onKyc ? (
-            <Link to="/" className="navbar__kyc-btn navbar__kyc-btn--return">
-              <span className="navbar__kyc-spark" aria-hidden="true">←</span>
-              Return to Orchestraty
-            </Link>
-          ) : (
-            <div
-              className="navbar__kyc"
-              onMouseEnter={() => setKycHover(true)}
-              onMouseLeave={() => setKycHover(false)}
-            >
-              <Link to="/knowyourcode" className="navbar__kyc-btn">
-                <span className="navbar__kyc-spark" aria-hidden="true">◆</span>
-                Launch Know Your Code
-              </Link>
-              {kycHover && (
-                <div className="navbar__kyc-pop" role="tooltip">
-                  <span className="navbar__kyc-pop-eyebrow">Know Your Code · new</span>
-                  <p className="navbar__kyc-pop-desc">
-                    Point it at any repository and it maps the architecture, tracks every
-                    change over time, and answers questions about your code — powered by your
-                    own LLM, fully local.
-                  </p>
-                  <span className="navbar__kyc-pop-cta">Open it and try the whole thing →</span>
-                </div>
-              )}
-            </div>
-          )}
-
           <a href="#get-started" className="navbar__download-btn">
             Install
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -174,11 +140,6 @@ const Navbar: React.FC = () => {
               ))}
             </div>
           ))}
-          {onKyc ? (
-            <Link to="/" className="navbar__mobile-link" onClick={() => setMobileOpen(false)}>← Return to Orchestraty</Link>
-          ) : (
-            <Link to="/knowyourcode" className="navbar__mobile-link" onClick={() => setMobileOpen(false)}>Launch Know Your Code</Link>
-          )}
           <Link to={DOCS_URL} className="navbar__mobile-link" onClick={() => setMobileOpen(false)}>Docs</Link>
           <a href="#get-started" className="navbar__download-btn navbar__mobile-download" onClick={() => setMobileOpen(false)}>Install</a>
         </div>
