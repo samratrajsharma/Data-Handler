@@ -1,0 +1,23 @@
+.overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+}
+.modal {
+  background: var(--orc-surface);
+  border: 1px solid var(--orc-border);
+  border-radius: 16px;
+  padding: 28px;
+  min-width: 420px; max-width: 600px;
+  max-height: 85vh; overflow-y: auto;
+}
+.modal__header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px;
+}
+.modal__header h2 { font-size: 18px; font-weight: 700; color: var(--orc-text); font-family: var(--orc-font); }
+.modal__close {
+  background: none; border: none; color: var(--orc-text-secondary);
+  font-size: 22px; cursor: pointer; padding: 4px;
+}
+.modal__close:hover { color: var(--orc-text); }

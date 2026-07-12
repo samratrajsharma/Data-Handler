@@ -1,0 +1,20 @@
+:host { display: block; }
+.stat-card {
+  background: var(--orc-surface);
+  border: 1px solid var(--orc-border);
+  border-radius: var(--orc-radius-lg);
+  padding: 20px;
+}
+.stat-card__label {
+  font-size: 12px; color: var(--orc-text-muted);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  font-weight: 600; font-family: var(--orc-font);
+}
+.stat-card__value {
+  font-size: 28px; font-weight: 700; margin-top: 4px;
+  font-family: var(--orc-font);
+}
+.stat-card__sub {
+  font-size: 12px; color: var(--orc-text-secondary);
+  margin-top: 2px; font-family: var(--orc-font);
+}

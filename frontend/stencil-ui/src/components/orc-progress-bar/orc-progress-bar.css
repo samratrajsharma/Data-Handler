@@ -1,0 +1,11 @@
+:host { display: block; }
+.progress-wrap { display: flex; align-items: center; gap: 10px; }
+.progress-bar {
+  flex: 1; height: 6px; background: var(--orc-surface-hover);
+  border-radius: 3px; overflow: hidden;
+}
+.progress-bar__fill {
+  height: 100%; border-radius: 3px; transition: width 0.3s ease;
+  background: linear-gradient(90deg, var(--orc-primary), var(--orc-accent));
+}
+.progress-label { font-size: 12px; color: var(--orc-text-muted); font-family: var(--orc-font); white-space: nowrap; }

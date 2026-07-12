@@ -1,0 +1,11 @@
+:host { display: inline-flex; align-items: center; justify-content: center; }
+.spinner {
+  display: inline-block;
+  animation: spin 1.2s linear infinite;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+.spinner--sm { width: 20px; height: 20px; }
+.spinner--md { width: 32px; height: 32px; }
+.spinner--lg { width: 48px; height: 48px; }
+@keyframes spin { to { transform: rotate(360deg); } }

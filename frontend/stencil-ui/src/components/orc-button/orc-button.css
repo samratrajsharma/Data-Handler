@@ -1,0 +1,24 @@
+:host { display: inline-flex; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: none; border-radius: var(--orc-radius-md);
+  font-family: var(--orc-font); font-weight: 600;
+  cursor: pointer; transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.btn--sm { padding: 6px 12px; font-size: 12px; }
+.btn--md { padding: 9px 18px; font-size: 13.5px; }
+.btn--lg { padding: 12px 24px; font-size: 15px; }
+.btn--primary { background: var(--orc-primary); color: #0a0a0f; }
+.btn--primary:hover { filter: brightness(1.1); }
+.btn--secondary { background: var(--orc-surface-hover); color: var(--orc-text); border: 1px solid var(--orc-border); }
+.btn--secondary:hover { background: #22222e; }
+.btn--danger { background: rgba(248,113,113,0.15); color: var(--orc-danger); }
+.btn--danger:hover { background: rgba(248,113,113,0.25); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.spinner {
+  width: 14px; height: 14px; border: 2px solid transparent;
+  border-top-color: currentColor; border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

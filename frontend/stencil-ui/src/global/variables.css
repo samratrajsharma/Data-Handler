@@ -1,0 +1,20 @@
+:root {
+  --orc-font: "Inter", sans-serif;
+  --orc-bg: #0a0a0f;
+  --orc-surface: #12121a;
+  --orc-surface-hover: #1a1a26;
+  --orc-border: #2a2a3a;
+  --orc-text: #e4e4e7;
+  --orc-text-secondary: #71717a;
+  --orc-text-muted: #52525b;
+  --orc-primary: #818cf8;
+  --orc-primary-dim: rgba(129, 140, 248, 0.15);
+  --orc-accent: #22d3ee;
+  --orc-success: #34d399;
+  --orc-warning: #fbbf24;
+  --orc-danger: #f87171;
+  --orc-radius-sm: 6px;
+  --orc-radius-md: 8px;
+  --orc-radius-lg: 12px;
+  --orc-radius-full: 9999px;
+}

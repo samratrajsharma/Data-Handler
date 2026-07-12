@@ -1,0 +1,10 @@
+:host { position: fixed; top: 20px; right: 20px; z-index: 300; }
+.toast {
+  padding: 12px 20px; border-radius: 10px;
+  font-size: 13.5px; font-weight: 500; font-family: var(--orc-font);
+  animation: slideIn 0.3s ease;
+}
+.toast--success { background: rgba(52,211,153,0.15); color: var(--orc-success); border: 1px solid rgba(52,211,153,0.3); }
+.toast--error { background: rgba(248,113,113,0.15); color: var(--orc-danger); border: 1px solid rgba(248,113,113,0.3); }
+.toast--info { background: var(--orc-primary-dim); color: var(--orc-primary); border: 1px solid rgba(129,140,248,0.3); }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }

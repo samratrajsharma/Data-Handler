@@ -1,0 +1,16 @@
+:host { display: block; }
+.table-wrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-family: var(--orc-font); }
+.table th {
+  text-align: left; padding: 10px 14px;
+  font-size: 11.5px; font-weight: 600;
+  color: var(--orc-text-muted); text-transform: uppercase;
+  letter-spacing: 0.04em; border-bottom: 1px solid var(--orc-border);
+}
+.table th.sortable { cursor: pointer; user-select: none; }
+.table th.sortable:hover { color: var(--orc-text-secondary); }
+.sort-arrow { font-size: 10px; }
+::slotted(td) {
+  padding: 12px 14px; border-bottom: 1px solid var(--orc-border);
+  color: var(--orc-text-secondary);
+}
