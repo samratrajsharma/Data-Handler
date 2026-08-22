@@ -217,7 +217,11 @@ def _extract_columns(raw_bytes: bytes, file_name: str) -> list[str]:
     ext = _get_extension(file_name)
     try:
         if ext in (".csv", ".tsv", ".txt"):
-            text = raw_bytes.decode("utf-8", errors="replace")
+            # FIX: decode with the same flexible detector the pipeline uses so
+            # non-UTF-8 CSVs (Windows-1252 / Latin-1) expose real column names
+            # (e.g. "Prénom") instead of mojibake ("Pr�nom") that rules never
+            # match. Hardcoded utf-8/replace here diverged from the pipeline.
+            text, _ = _decode_flexible(raw_bytes)
             delimiter = _sniff_delimiter(text, ext)
             # Skip any prelude metadata lines so the header we pick is the
             # actual tabular header, not free-text from a README block.
@@ -227,7 +231,9 @@ def _extract_columns(raw_bytes: bytes, file_name: str) -> list[str]:
             reader = csv_mod.reader(io.StringIO(header_line), delimiter=delimiter)
             return [c.strip() for c in next(reader, []) if c.strip()]
         if ext in (".json", ".jsonl"):
-            text = raw_bytes.decode("utf-8", errors="replace").strip()
+            # FIX: use the shared flexible decoder (see CSV branch above).
+            text, _ = _decode_flexible(raw_bytes)
+            text = text.strip()
             if ext == ".jsonl":
                 first = text.splitlines()[0] if text else "{}"
                 obj = json.loads(first)
@@ -246,7 +252,9 @@ def _extract_preview(raw_bytes: bytes, file_name: str, limit: int = 10) -> tuple
     ext = _get_extension(file_name)
     try:
         if ext in (".csv", ".tsv", ".txt"):
-            text = raw_bytes.decode("utf-8", errors="replace")
+            # FIX: decode via the shared flexible detector so previewed rows
+            # match the pipeline's decoding (see _extract_columns).
+            text, _ = _decode_flexible(raw_bytes)
             delimiter = _sniff_delimiter(text, ext)
             # Skip prelude metadata so the preview shows the actual table.
             skip = _find_data_start_line(text, delimiter)
@@ -264,7 +272,9 @@ def _extract_preview(raw_bytes: bytes, file_name: str, limit: int = 10) -> tuple
                 rows.append([str(v) for v in row])
             return columns, rows
         if ext in (".json", ".jsonl"):
-            text = raw_bytes.decode("utf-8", errors="replace").strip()
+            # FIX: use the shared flexible decoder (see CSV branch above).
+            text, _ = _decode_flexible(raw_bytes)
+            text = text.strip()
             if ext == ".jsonl":
                 parsed: list = []
                 for ln in text.splitlines()[: limit + 5]:
@@ -591,7 +601,7 @@ async def list_datasets(
         None, alias="status", pattern="^(raw|processed|labeled|reviewed|ready)$"
     ),
     skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=500),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

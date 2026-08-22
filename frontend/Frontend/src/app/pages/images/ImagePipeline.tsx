@@ -177,9 +177,17 @@ export default function ImagePipeline() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1>Image Pipeline</h1>
-        <p>Select an image dataset to embed, cluster, and search its images with CLIP</p>
+      <div className="page-header" style={{display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12}}>
+        <div>
+          <h1>Image Pipeline</h1>
+          <p>Select an image dataset to embed, cluster, and search its images with CLIP</p>
+        </div>
+        {datasetId && (
+          <Link to={`/annotate/${datasetId}`} className="btn btn--primary"
+            title="Open the manual annotation editor">
+            Annotate &rarr;
+          </Link>
+        )}
       </div>
 
       {/* Controls — a guided, ordered pipeline */}
@@ -408,7 +416,7 @@ export default function ImagePipeline() {
           </div>
           {searchError && (
             <div style={{padding: "12px 16px", background: "rgba(239,68,68,0.1)", borderRadius: 8, marginBottom: 16,
-              color: "#ef4444", fontSize: 13, border: "1px solid rgba(239,68,68,0.2)"}}>
+              color: "var(--dash-text-muted)", fontSize: 13, border: "1px solid rgba(239,68,68,0.2)"}}>
               {searchError}
             </div>
           )}
@@ -467,11 +475,17 @@ export default function ImagePipeline() {
                   </div>
                 )}
               </div>
-              <div style={{display: "flex", gap: 8, marginTop: 16}}>
+              <div style={{display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap"}}>
                 {selectedImage.original_url && (
                   <a href={withToken(selectedImage.original_url)} target="_blank" rel="noopener noreferrer" className="btn btn--sm btn--primary">
                     View Full Size
                   </a>
+                )}
+                {datasetId && (
+                  <Link to={`/annotate/${datasetId}`} className="btn btn--sm btn--secondary"
+                    title="Open the manual annotation editor">
+                    Annotate this dataset
+                  </Link>
                 )}
                 <button className="btn btn--sm btn--danger" onClick={() => handleDelete(selectedImage)}>
                   Delete

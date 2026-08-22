@@ -8,6 +8,10 @@ import EDA from "./pages/eda/EDA";
 import Labeling from "./pages/labeling/Labeling";
 import AILabeling from "./pages/ai-labeling/AILabeling";
 import ImagePipeline from "./pages/images/ImagePipeline";
+import Annotate from "./pages/annotate/Annotate";
+import AnnotateEditor from "./pages/annotate/AnnotateEditor";
+import TextLabeling from "./pages/text-labeling/TextLabeling";
+import TextLabelingEditor from "./pages/text-labeling/TextLabelingEditor";
 import ReviewPage from "./pages/review/ReviewPage";
 import Workflows from "./pages/workflows/Workflows";
 import WorkflowDetail from "./pages/workflows/WorkflowDetail";
@@ -33,10 +37,15 @@ export default function AppRouter() {
         <Route path="labeling" element={<Labeling />} />
         <Route path="ai-labeling" element={<AILabeling />} />
         <Route path="images" element={<ImagePipeline />} />
+        <Route path="annotate" element={<Annotate />} />
+        <Route path="annotate/:datasetId" element={<AnnotateEditor />} />
+        <Route path="text-labeling" element={<TextLabeling />} />
+        <Route path="text-labeling/:datasetId" element={<TextLabelingEditor />} />
         <Route path="review" element={<ReviewPage />} />
         <Route path="workflows" element={<Workflows />} />
         <Route path="workflows/:id" element={<WorkflowDetail />} />
         <Route path="llm" element={<LLMConfig />} />
+        <Route path="settings" element={<LLMConfig />} />
         <Route path="tasks" element={<Tasks />} />
       </Route>
 

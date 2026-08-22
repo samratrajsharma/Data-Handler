@@ -127,7 +127,30 @@ def generate_image_embeddings(self, dataset_id: str):
                 f"Generating embeddings ({batch_end}/{total})...",
             )
 
-            embeddings = embed_images(image_bytes_list)
+            embeddings, kept_indices = embed_images(
+                image_bytes_list, return_kept_indices=True,
+            )
+
+            # Pair asset ids to vectors via the explicit kept-index mapping.
+            # An undecodable image is dropped inside embed_images, so positional
+            # pairing would shift every later id onto the wrong vector (and
+            # mis-stamp embedding_id). Use the mapping instead.
+            kept_ids = [image_ids[k] for k in kept_indices]
+            if len(kept_ids) != int(embeddings.shape[0]):
+                raise RuntimeError(
+                    f"Embedding/id length mismatch for batch "
+                    f"{batch_start}-{batch_end}: {int(embeddings.shape[0])} "
+                    f"vectors vs {len(kept_ids)} ids"
+                )
+            if len(kept_ids) < len(image_ids):
+                logger.warning(
+                    "Batch %d-%d: %d of %d images could not be embedded and "
+                    "were skipped", batch_start, batch_end,
+                    len(image_ids) - len(kept_ids), len(image_ids),
+                )
+            if not kept_ids:
+                # Nothing in this batch decoded — nothing to store or stamp.
+                continue
 
             # ── Step 4: Store vectors in Qdrant ─────────────────────────
             collection_name = f"{dataset_id}_images"
@@ -138,7 +161,7 @@ def generate_image_embeddings(self, dataset_id: str):
             )
 
             stored_ids = store_image_vectors_in_qdrant(
-                embeddings, image_ids, collection_name,
+                embeddings, kept_ids, collection_name,
             )
             if not stored_ids:
                 raise RuntimeError(

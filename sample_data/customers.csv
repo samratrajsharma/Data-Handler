@@ -1,0 +1,16 @@
+customer_id,email,signup_date,country,age,plan,monthly_spend
+1001,alice@example.com,2021-01-15,US,34,pro,89.00
+1002,bob@example.com,2021-02-20,UK,,free,0.00
+1003,carol@example.com,2021-03-10,US,29,enterprise,499.00
+1004,dave@example.com,2021-04-05,CA,41,pro,89.00
+1005,eve@example.com,2021-05-12,US,,free,0.00
+1006,frank@example.com,2021-06-18,UK,52,enterprise,499.00
+1007,grace@example.com,2021-07-22,CA,38,pro,89.00
+1008,heidi@example.com,2021-08-30,US,45,free,0.00
+1009,ivan@example.com,2021-09-14,UK,27,pro,89.00
+1010,judy@example.com,2021-10-01,US,33,enterprise,499.00
+1010,judy@example.com,2021-10-01,US,33,enterprise,499.00
+1011,mallory@example.com,2021-11-11,CA,,free,0.00
+1012,niaj@example.com,2021-12-25,US,60,pro,89.00
+1013,olivia@example.com,2022-01-08,UK,48,enterprise,499.00
+1014,peggy@example.com,2022-02-14,CA,31,free,0.00

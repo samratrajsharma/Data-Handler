@@ -59,7 +59,7 @@ export default function Structuring() {
 
   useEffect(() => {
     datasetApi.list({ limit: 100 }).then((r) => {
-      setDatasets((Array.isArray(r.data) ? r.data : r.data.datasets || []).filter((d: {source_type?: string}) => d.source_type !== "image"));
+      setDatasets((Array.isArray(r.data) ? r.data : r.data.datasets || []).filter((d: {source_type?: string}) => d.source_type !== "image" && d.source_type !== "text"));
     }).catch(() => {});
     // Pre-select dataset when coming from another step (Datasets -> Structuring etc.)
     const preselect = searchParams.get("dataset");
@@ -388,9 +388,9 @@ export default function Structuring() {
                       onClick={() => setDropCols(selected ? dropCols.filter(x => x !== c) : [...dropCols, c])}
                       style={{
                         padding: "4px 10px", fontSize: 12, borderRadius: 100,
-                        border: `1px solid ${selected ? "#dc2626" : "var(--dash-border)"}`,
+                        border: `1px solid ${selected ? "var(--dash-text-muted)" : "var(--dash-border)"}`,
                         background: selected ? "rgba(220,38,38,0.08)" : "#fff",
-                        color: selected ? "#b91c1c" : "var(--dash-text)",
+                        color: selected ? "var(--dash-text-muted)" : "var(--dash-text)",
                         cursor: "pointer",
                         textDecoration: selected ? "line-through" : "none",
                         fontFamily: "inherit",
@@ -548,7 +548,7 @@ export default function Structuring() {
                     <div className="struct-retention__track">
                       <div className="struct-retention__fill" style={{
                         width: `${retentionPct}%`,
-                        background: retentionPct > 90 ? "#22c55e" : retentionPct > 70 ? "#f59e0b" : "#ef4444"
+                        background: retentionPct > 90 ? "var(--dash-text)" : retentionPct > 70 ? "var(--dash-text-secondary)" : "var(--dash-text-muted)"
                       }} />
                     </div>
                     <div className="struct-retention__footer">

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { datasetApi, inferSourceTypeFromFile } from "../../../shared/api/datasets";
 import { imageApi } from "../../../shared/api/images";
+import { textApi } from "../../../shared/api/text";
+import type { TextDocListItem, TextSplitStrategy } from "../../../shared/api/text";
 import "./Datasets.css";
 
 /** Preview wrapper with explicit ← / → arrow buttons AND a custom
@@ -130,9 +132,11 @@ interface PreviewBundle {
   columns: string[]; rows: string[][]; row_count?: number; truncated: boolean;
 }
 interface ImageThumb { id: string; file_name: string; thumbnail_url?: string }
+interface TextPreviewBundle { docs: TextDocListItem[]; total: number }
 
-type DatasetType = "tabular" | "image";
+type DatasetType = "tabular" | "image" | "text";
 const TABULAR_ACCEPT = ".csv,.json,.jsonl,.tsv,.txt";
+const TEXT_ACCEPT = ".txt,.md";
 const IMAGE_BATCH = 20;
 const STATUS_KEYS = ["ready", "processed", "labeled", "reviewed", "raw"];
 
@@ -169,12 +173,14 @@ export default function Datasets() {
   const [previews, setPreviews] = useState<Record<string, PreviewBundle>>({});
   const [imagePreviews, setImagePreviews] = useState<Record<string, ImageThumb[]>>({});
   const [imageTotals, setImageTotals] = useState<Record<string, number>>({});
+  const [textPreviews, setTextPreviews] = useState<Record<string, TextPreviewBundle>>({});
 
   // Upload modal state
   const [showUpload, setShowUpload] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState("");
   const [datasetType, setDatasetType] = useState<DatasetType>("tabular");
+  const [textStrategy, setTextStrategy] = useState<TextSplitStrategy>("auto");
   const [files, setFiles] = useState<File[]>([]);
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
@@ -221,6 +227,16 @@ export default function Datasets() {
           } catch {
             setImagePreviews((prev) => ({ ...prev, [d.id]: [] }));
           }
+        } else if (d.source_type === "text") {
+          try {
+            const res = await withTimeout(textApi.listDocuments(d.id, { limit: 3 }), 12000);
+            setTextPreviews((prev) => ({
+              ...prev,
+              [d.id]: { docs: res.data.items || [], total: res.data.total || 0 },
+            }));
+          } catch {
+            setTextPreviews((prev) => ({ ...prev, [d.id]: { docs: [], total: 0 } }));
+          }
         } else {
           try {
             const res = await withTimeout(datasetApi.getPreview(d.id, 10), 12000);
@@ -266,7 +282,7 @@ export default function Datasets() {
   const resetForm = () => {
     setShowUpload(false);
     setFiles([]); setName(""); setDesc("");
-    setDatasetType("tabular"); setUploadMsg("");
+    setDatasetType("tabular"); setTextStrategy("auto"); setUploadMsg("");
   };
 
   const handleUpload = async (e: React.FormEvent) => {
@@ -278,7 +294,11 @@ export default function Datasets() {
       const created = await datasetApi.create({
         name: name.trim() || (datasetType === "image" ? `${defaultName} (images)` : defaultName),
         description: desc || undefined,
-        source_type: datasetType === "image" ? "image" : inferSourceTypeFromFile(files[0]),
+        source_type: datasetType === "image" ? "image"
+          : datasetType === "text" ? "text"
+          // Explicit "Tabular data" choice wins: a .txt here is parsed as a
+          // delimited table, so never let inference flip it to "text".
+          : (() => { const t = inferSourceTypeFromFile(files[0]); return t === "text" ? "csv" : t; })(),
       });
       const newId = created.data?.id;
       if (newId) {
@@ -289,6 +309,9 @@ export default function Datasets() {
             setUploadMsg(`Uploading images ${i + 1}-${Math.min(i + IMAGE_BATCH, imageFiles.length)} of ${imageFiles.length}...`);
             await imageApi.uploadBatch(newId, imageFiles.slice(i, i + IMAGE_BATCH));
           }
+        } else if (datasetType === "text") {
+          setUploadMsg(`Uploading ${files.length} text file${files.length === 1 ? "" : "s"}...`);
+          await textApi.upload(newId, files, textStrategy);
         } else {
           await datasetApi.upload(newId, files[0]);
         }
@@ -349,6 +372,7 @@ export default function Datasets() {
       setPreviews((prev) => { const c = { ...prev }; delete c[id]; return c; });
       setImagePreviews((prev) => { const c = { ...prev }; delete c[id]; return c; });
       setImageTotals((prev) => { const c = { ...prev }; delete c[id]; return c; });
+      setTextPreviews((prev) => { const c = { ...prev }; delete c[id]; return c; });
     } catch (err) {
       const e = err as { response?: { status?: number; data?: { detail?: unknown } } };
       const detail = e.response?.data?.detail;
@@ -435,6 +459,30 @@ export default function Datasets() {
     );
   };
 
+  const renderTextPreview = (d: Dataset) => {
+    const tp = textPreviews[d.id];
+    if (tp === undefined) {
+      return <div className="ds-preview-empty">Loading documents…</div>;
+    }
+    if (tp.docs.length === 0) {
+      return <div className="ds-preview-empty">No text documents uploaded to this dataset yet.</div>;
+    }
+    return (
+      <div className="ds-doc-list">
+        {tp.docs.map((doc) => (
+          <div key={doc.id} className="ds-doc">
+            <span className="ds-doc__name" title={doc.name}>{doc.name}</span>
+            <p className="ds-doc__preview">{doc.preview}</p>
+          </div>
+        ))}
+        <div className="ds-doc-foot">
+          <span>{tp.total.toLocaleString()} document{tp.total === 1 ? "" : "s"}</span>
+          <Link to={`/text-labeling/${d.id}`} className="ds-doc-foot__open">Open labeler →</Link>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
       <div className="ds-header">
@@ -458,6 +506,7 @@ export default function Datasets() {
         <div className="ds-list">
           {datasets.map((d) => {
             const isImage = d.source_type === "image";
+            const isText = d.source_type === "text";
             // Tabular: show real count when known, "— rows" when unknown
             // (preview is what proves whether the dataset actually has data
             // — the row_count field can lag for legacy versions).
@@ -465,17 +514,21 @@ export default function Datasets() {
             const knownRows = d.row_count ?? previewRowCount;
             const rowsLabel = isImage
               ? `${(imageTotals[d.id] ?? 0).toLocaleString()} image${(imageTotals[d.id] ?? 0) === 1 ? "" : "s"}`
-              : knownRows != null
-                ? `${knownRows.toLocaleString()} row${knownRows === 1 ? "" : "s"}`
-                : "— rows";
+              : isText
+                ? `${(textPreviews[d.id]?.total ?? 0).toLocaleString()} document${(textPreviews[d.id]?.total ?? 0) === 1 ? "" : "s"}`
+                : knownRows != null
+                  ? `${knownRows.toLocaleString()} row${knownRows === 1 ? "" : "s"}`
+                  : "— rows";
             return (
               <div key={d.id} className="ds-card">
                 <div className="ds-card__head">
-                  <div className={`ds-card__icon ds-card__icon--${isImage ? "image" : "tabular"}`}>
+                  <div className={`ds-card__icon ds-card__icon--${isImage ? "image" : isText ? "text" : "tabular"}`}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                       stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                       {isImage ? (
                         <path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zM8.5 10a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM21 15l-5-5L5 21" />
+                      ) : isText ? (
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM14 2v6h6M9 13h6M9 17h6M9 9h1" />
                       ) : (
                         <path d="M12 2C6.5 2 2 4 2 6.5v11C2 20 6.5 22 12 22s10-2 10-4.5v-11C22 4 17.5 2 12 2zM2 9.5c0 2.5 4.5 4.5 10 4.5s10-2 10-4.5" />
                       )}
@@ -484,7 +537,7 @@ export default function Datasets() {
                   <div className="ds-card__text">
                     <Link to={`/datasets/${d.id}`} className="ds-card__name">{d.name}</Link>
                     <div className="ds-card__meta">
-                      <span>{isImage ? "Image dataset" : "Tabular dataset"}</span>
+                      <span>{isImage ? "Image dataset" : isText ? "Text dataset" : "Tabular dataset"}</span>
                       <span className="ds-card__meta-sep">•</span>
                       <span>{rowsLabel}</span>
                       <span className="ds-card__meta-sep">•</span>
@@ -515,7 +568,7 @@ export default function Datasets() {
                     )}
                   </button>
                 </div>
-                {isImage ? renderImagePreview(d) : renderTabularPreview(d)}
+                {isImage ? renderImagePreview(d) : isText ? renderTextPreview(d) : renderTabularPreview(d)}
               </div>
             );
           })}
@@ -538,10 +591,11 @@ export default function Datasets() {
             <form onSubmit={handleUpload}>
               <div className="input-group">
                 <label>Dataset type</label>
-                <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10}}>
+                <div style={{display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10}}>
                   {([
                     { key: "tabular", title: "Tabular data", sub: "CSV, JSON, JSONL, TSV, TXT" },
                     { key: "image", title: "Image dataset", sub: "PNG, JPG, WEBP, BMP, TIFF" },
+                    { key: "text", title: "Text (.txt)", sub: "TXT, MD — labelable documents" },
                   ] as { key: DatasetType; title: string; sub: string }[]).map((opt) => (
                     <button type="button" key={opt.key}
                       onClick={() => { setDatasetType(opt.key); setFiles([]); }}
@@ -572,6 +626,28 @@ export default function Datasets() {
                   <label>File (CSV, JSON, JSONL, TSV, TXT)</label>
                   <input type="file" accept={TABULAR_ACCEPT} onChange={onFilesPicked} required />
                 </div>
+              ) : datasetType === "text" ? (
+                <>
+                  <div className="input-group">
+                    <label>Text files (TXT, MD)</label>
+                    <input type="file" accept={TEXT_ACCEPT} multiple onChange={onFilesPicked} required />
+                    {files.length > 0 && (
+                      <p style={{fontSize: 12, color: "var(--dash-text-muted)", marginTop: 8}}>
+                        {files.length} file{files.length === 1 ? "" : "s"} selected
+                      </p>
+                    )}
+                  </div>
+                  <div className="input-group">
+                    <label>Split strategy</label>
+                    <select value={textStrategy} onChange={(e) => setTextStrategy(e.target.value as TextSplitStrategy)}>
+                      <option value="auto">Auto (recommended)</option>
+                      <option value="file">Whole file = one document</option>
+                      <option value="blank_line">Split on blank lines</option>
+                      <option value="line">One document per line</option>
+                    </select>
+                    <p className="ds-field-hint">How to break files into labelable documents</p>
+                  </div>
+                </>
               ) : (
                 <div className="input-group">
                   <label>Images — pick files or a whole folder</label>

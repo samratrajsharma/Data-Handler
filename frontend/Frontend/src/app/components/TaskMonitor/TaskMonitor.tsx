@@ -42,7 +42,7 @@ export default function TaskMonitor({ task, steps, stuck, progressPct, running }
           <span className="tm-warn__body">
             This job has been queued for a while but the background worker
             hasn't started it. The worker may be down, or busy with an earlier
-            job — check that the <code>orchestraty-celery-worker</code> container
+            job — check that the <code>datahandler-celery-worker</code> container
             is running (<code>docker compose ps</code>) and review its logs.
           </span>
         </div>

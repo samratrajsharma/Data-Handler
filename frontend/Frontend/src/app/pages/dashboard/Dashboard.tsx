@@ -8,22 +8,23 @@ import "./Dashboard.css";
 // What remains is Quick Actions + Recent Tasks, which is the useful bit
 // for a single user.
 
+// Aligned to the actual flow: bring data in, then one entry point per mode.
 const QUICK_ACTIONS = [
   {
-    to: "/datasets", label: "New Dataset", desc: "Ingest a CSV or JSON file",
+    to: "/datasets", label: "New dataset", desc: "Add CSV, images, or text",
     color: "indigo", icon: "M12 5v14M5 12h14",
   },
   {
-    to: "/workflows", label: "Run Workflow", desc: "Orchestrate a pipeline",
-    color: "cyan", icon: "M8 5v14l11-7z",
+    to: "/structuring", label: "Structure & clean", desc: "Tidy tabular data",
+    color: "cyan", icon: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",
   },
   {
-    to: "/llm", label: "Configure LLM", desc: "Connect model providers",
-    color: "amber", icon: "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
-  },
-  {
-    to: "/images", label: "Image Pipeline", desc: "Upload & embed images",
+    to: "/annotate", label: "Annotate images", desc: "Draw boxes & labels",
     color: "emerald", icon: "M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zM8.5 10a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM21 15l-5-5L5 21",
+  },
+  {
+    to: "/text-labeling", label: "Label text", desc: "Document classes & spans",
+    color: "amber", icon: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM14 2v6h6M16 13H8M16 17H8M10 9H8",
   },
 ];
 
@@ -45,13 +46,13 @@ export default function Dashboard() {
     <div>
       <div className="page-header">
         <h1>Welcome back</h1>
-        <p>Here’s what’s happening across your workspace</p>
+        <p>Bring data in, label it, and export it — pick up where you left off below.</p>
       </div>
 
-      <div className="two-col">
+      <div className="dash-stack">
         <div className="card">
           <div className="card-header">
-            <h3>Quick Actions</h3>
+            <h3>Quick actions</h3>
           </div>
           <div className="qa-grid">
             {QUICK_ACTIONS.map((a) => (
@@ -73,11 +74,11 @@ export default function Dashboard() {
 
         <div className="card">
           <div className="card-header">
-            <h3>Recent Tasks</h3>
+            <h3>Recent tasks</h3>
             <Link to="/tasks" className="btn btn--sm btn--secondary">View all</Link>
           </div>
           {recentTasks.length === 0 ? (
-            <div className="empty-state"><h3>No tasks yet</h3></div>
+            <div className="empty-state"><h3>No tasks yet</h3><p>Runs you kick off — cleaning, labelling, exports — show up here.</p></div>
           ) : (
             <div className="table-wrap">
               <table className="table">

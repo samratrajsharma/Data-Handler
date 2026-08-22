@@ -1,5 +1,5 @@
 """
-Orchestraty — Enterprise AI Operating System
+Data Handler — Enterprise AI Operating System
 FastAPI application entry point.
 """
 
@@ -29,6 +29,9 @@ from core.api.image_routes import router as image_router  # noqa: E402
 from core.api.ai_labeling_routes import router as ai_labeling_router  # noqa: E402
 from core.api.review_routes import router as review_router  # noqa: E402
 from core.api.workflow_routes import router as workflow_router  # noqa: E402
+from core.api.annotation_routes import router as annotation_router  # noqa: E402
+from core.api.annotation_export_routes import router as annotation_export_router  # noqa: E402
+from core.api.text_routes import router as text_router  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +165,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # ── Shutdown ─────────────────────────────────────────────────────────
-    logger.info("Orchestraty shutting down")
+    logger.info("Data Handler shutting down")
 
 
 # ---------------------------------------------------------------------------
@@ -170,7 +173,7 @@ async def lifespan(app: FastAPI):
 # ---------------------------------------------------------------------------
 
 app = FastAPI(
-    title="Orchestraty",
+    title="Data Handler",
     description="Enterprise AI Operating System",
     version="0.1.0",
     lifespan=lifespan,
@@ -196,6 +199,9 @@ app.include_router(image_router)
 app.include_router(ai_labeling_router)
 app.include_router(review_router)
 app.include_router(workflow_router)
+app.include_router(annotation_router)
+app.include_router(annotation_export_router)
+app.include_router(text_router)
 
 
 # ── Root endpoints ───────────────────────────────────────────────────────
@@ -206,7 +212,7 @@ async def health_check():
     """Lightweight liveness probe."""
     return {
         "status": "healthy",
-        "service": "orchestraty",
+        "service": "datahandler",
         "version": "0.1.0",
     }
 
@@ -215,6 +221,6 @@ async def health_check():
 async def root():
     """Landing page with pointer to interactive docs."""
     return {
-        "message": "Welcome to Orchestraty - Enterprise AI Operating System",
+        "message": "Welcome to Data Handler - Enterprise AI Operating System",
         "docs": "/docs",
     }

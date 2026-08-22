@@ -76,7 +76,7 @@ def _is_date_column(series: pd.Series) -> bool:
         return False
     sample = non_null.head(100)
     try:
-        parsed = pd.to_datetime(sample, infer_datetime_format=True, errors="coerce")
+        parsed = pd.to_datetime(sample, errors="coerce")
         success_rate = parsed.notna().mean()
         return success_rate > 0.8
     except Exception:
@@ -122,6 +122,11 @@ def _infer_column_type(series: pd.Series, col_name: str) -> str:
     if _match_ratio(sample, URL_RE) > 0.8:
         return "url"
 
+    # Date — checked before phone because the loose phone regex otherwise
+    # captures ISO dates like "2021-01-01".
+    if _is_date_column(sample):
+        return "date"
+
     # Phone
     if _match_ratio(sample, PHONE_RE) > 0.7:
         return "phone"
@@ -133,10 +138,6 @@ def _infer_column_type(series: pd.Series, col_name: str) -> str:
     # Currency
     if _match_ratio(sample, CURRENCY_RE) > 0.7:
         return "currency"
-
-    # Date
-    if _is_date_column(sample):
-        return "date"
 
     # Categorical (low cardinality relative to row count)
     cardinality_ratio = non_null.nunique() / max(len(non_null), 1)

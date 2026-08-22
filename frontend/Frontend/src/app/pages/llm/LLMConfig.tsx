@@ -148,7 +148,7 @@ export default function LLMConfig() {
               <input value={modelName} onChange={(e) => setModelName(e.target.value)} placeholder="Model name" />
             )}
             {modelWarning && (
-              <div style={{marginTop: 6, fontSize: 12, color: "var(--dash-warning, #d97706)"}}>
+              <div style={{marginTop: 6, fontSize: 12, color: "var(--dash-warning, var(--dash-text-secondary))"}}>
                 {modelWarning}
               </div>
             )}

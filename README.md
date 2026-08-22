@@ -98,7 +98,7 @@ FastAPI (:8000) ──queue──► Celery worker
 ./run.sh
 ```
 
-This rebuilds and starts every service, waits until the stack is healthy, and opens the app. Once it's up:
+The first run builds the images (a few minutes), then starts everything and opens the app; later runs just start the existing images (fast). Once it's up:
 
 | Service | URL |
 | --- | --- |
@@ -107,12 +107,15 @@ This rebuilds and starts every service, waits until the stack is healthy, and op
 | MinIO console | http://localhost:9001 |
 | Qdrant dashboard | http://localhost:6333/dashboard |
 
+> **Prebuilt images:** once a release tag is published, `run.ps1` / `run.sh` **pull** the prebuilt backend + frontend images from GHCR instead of building locally, so a fresh install is a quick download rather than a long build. Pass `-Build` / `--build` only when you've changed the code and want to rebuild.
+
 ### Command flags
 
 Combine freely (e.g. `.\run.ps1 -Fresh -Llm`):
 
 | PowerShell | Bash | Effect |
 | --- | --- | --- |
+| `-Build` | `--build` | Rebuild the images (use after changing code) |
 | `-Fresh` | `--fresh` | Wipe all data volumes first, then rebuild (clean slate) |
 | `-Llm` | `--llm` | Also start the bundled Ollama container (local LLM) |
 | `-Stop` | `--stop` | Stop the stack (data volumes preserved) |

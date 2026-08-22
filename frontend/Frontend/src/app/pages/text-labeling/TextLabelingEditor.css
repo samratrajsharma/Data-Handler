@@ -1,0 +1,572 @@
+/* ── Text Labeling Editor — three-pane viewport layout ── */
+
+.txl-editor {
+  display: flex;
+  gap: 14px;
+  /* .dash__main pads 32px top/bottom — fill the rest of the viewport. */
+  height: calc(100vh - 64px);
+  min-height: 420px;
+}
+
+/* ── LEFT: document list ── */
+.txl-left {
+  flex: 0 0 280px;
+  width: 280px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.txl-left__head {
+  padding: 12px;
+  border-bottom: 1px solid var(--dash-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.txl-back {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dash-text-muted);
+  text-decoration: none;
+}
+.txl-back:hover {
+  color: var(--accent);
+}
+.txl-search {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--dash-bg);
+  border: 1px solid var(--dash-border);
+  border-radius: 8px;
+  color: var(--dash-text);
+  font-size: 13px;
+}
+.txl-search:focus {
+  outline: none;
+  border-color: var(--dash-primary);
+  box-shadow: 0 0 0 3px var(--dash-primary-dim);
+}
+.txl-filters {
+  display: flex;
+  gap: 6px;
+}
+.txl-filter {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--dash-border);
+  background: none;
+  color: var(--dash-text-secondary);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.txl-filter:hover {
+  border-color: var(--dash-border-strong);
+  color: var(--dash-text);
+}
+.txl-filter--active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.txl-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+}
+.txl-list__empty {
+  padding: 14px 10px;
+}
+.txl-list__more {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.txl-row {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.txl-row:hover {
+  background: var(--dash-surface-hover);
+}
+.txl-row--active {
+  background: var(--dash-surface-active, var(--dash-surface-hover));
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.txl-row__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dash-border-strong);
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+.txl-row__dot--labeled {
+  background: var(--accent);
+}
+.txl-row__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.txl-row__name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--dash-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.txl-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--dash-text-muted);
+}
+.txl-row__spans {
+  border: 1px solid var(--dash-border);
+  border-radius: 999px;
+  padding: 0 6px;
+  font-weight: 600;
+}
+.txl-row__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.txl-row__chip {
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 1px 5px;
+  max-width: 110px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── CENTER: reader ── */
+.txl-center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.txl-center__empty {
+  margin: auto;
+}
+.txl-center__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--dash-border);
+}
+.txl-center__name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dash-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.txl-center__pos {
+  font-size: 12px;
+  color: var(--dash-text-muted);
+  white-space: nowrap;
+  margin-left: auto;
+}
+.txl-nav {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Doc-label pill bar */
+.txl-labelbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--dash-border);
+}
+.txl-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--dash-border);
+  background: none;
+  color: var(--dash-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.txl-pill:hover {
+  border-color: var(--dash-border-strong);
+  color: var(--dash-text);
+}
+.txl-pill--active {
+  color: var(--dash-text);
+  font-weight: 600;
+}
+.txl-kbd {
+  font-size: 9px;
+  font-family: inherit;
+  border: 1px solid var(--dash-border);
+  border-radius: 3px;
+  padding: 0 3px;
+  color: var(--dash-text-muted);
+}
+
+/* Document content */
+.txl-doc {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  cursor: text;
+}
+.txl-doc__inner {
+  padding: 18px 22px 60px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "SFMono-Regular", Consolas, "Roboto Mono", ui-monospace, "Cascadia Mono", monospace;
+  font-size: 13.5px;
+  line-height: 1.9;
+  color: var(--dash-text);
+}
+.txl-mark {
+  color: inherit;
+  border-radius: 3px;
+  padding: 1px 0;
+  cursor: pointer;
+}
+.txl-mark--selected {
+  outline: 1px dashed var(--dash-text-secondary);
+  outline-offset: 1px;
+}
+.txl-mark__label {
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: super;
+  letter-spacing: 0.02em;
+  margin-left: 2px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.txl-mark__x {
+  user-select: none;
+  -webkit-user-select: none;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin-left: 4px;
+  vertical-align: middle;
+  line-height: 1;
+  font-size: 11px;
+  border-radius: 50%;
+  border: 1px solid var(--dash-border-strong);
+  background: var(--dash-surface);
+  color: var(--dash-text);
+  cursor: pointer;
+}
+.txl-mark__x:hover {
+  border-color: var(--dash-text);
+}
+
+/* Class-picker popover */
+.txl-pop {
+  position: absolute;
+  z-index: 30;
+  width: 260px;
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border-strong);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+  padding: 8px;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+.txl-pop__classes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 180px;
+  overflow-y: auto;
+  margin-bottom: 6px;
+}
+.txl-pop__class {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--dash-text);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+}
+.txl-pop__class:hover {
+  background: var(--dash-surface-hover);
+}
+.txl-pop__new {
+  display: flex;
+  gap: 6px;
+}
+.txl-pop__new input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  background: var(--dash-bg);
+  border: 1px solid var(--dash-border);
+  border-radius: 8px;
+  color: var(--dash-text);
+  font-size: 12.5px;
+}
+.txl-pop__new input:focus {
+  outline: none;
+  border-color: var(--dash-primary);
+}
+
+/* ── RIGHT: panels ── */
+.txl-right {
+  flex: 0 0 300px;
+  width: 300px;
+  min-width: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.txl-panel {
+  padding: 14px 16px;
+}
+.txl-panel__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dash-text);
+  margin-bottom: 10px;
+}
+.txl-panel__group {
+  margin-bottom: 8px;
+}
+.txl-panel__group label {
+  font-size: 12px;
+}
+
+.txl-classes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.txl-class {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 6px;
+}
+.txl-class:hover {
+  background: var(--dash-surface-hover);
+}
+.txl-class__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--dash-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.txl-class__count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dash-text-muted);
+  border: 1px solid var(--dash-border);
+  border-radius: 999px;
+  padding: 0 7px;
+}
+.txl-add {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.txl-add input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 9px;
+  background: var(--dash-bg);
+  border: 1px solid var(--dash-border);
+  border-radius: 8px;
+  color: var(--dash-text);
+  font-size: 12.5px;
+}
+.txl-add input:focus {
+  outline: none;
+  border-color: var(--dash-primary);
+}
+
+.txl-anns {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.txl-ann {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+.txl-ann .txl-dot {
+  margin-top: 3px;
+}
+.txl-ann--span {
+  cursor: pointer;
+}
+.txl-ann--span:hover {
+  background: var(--dash-surface-hover);
+}
+.txl-ann--selected {
+  background: var(--dash-surface-hover);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.txl-ann__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.txl-ann__class {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dash-text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.txl-ann__kind {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--dash-text-muted);
+}
+.txl-ann__snippet {
+  font-size: 11.5px;
+  color: var(--dash-text-secondary);
+  font-family: "SFMono-Regular", Consolas, ui-monospace, monospace;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.txl-x {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  line-height: 1;
+  font-size: 13px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--dash-text-muted);
+  cursor: pointer;
+}
+.txl-x:hover {
+  background: var(--dash-surface-hover);
+  color: var(--dash-text);
+}
+
+.txl-hint {
+  font-size: 11.5px;
+  color: var(--dash-text-muted);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+.txl-file {
+  width: 100%;
+  font-size: 12px;
+  color: var(--dash-text-secondary);
+  margin-bottom: 10px;
+}
+.txl-muted {
+  font-size: 12px;
+  color: var(--dash-text-muted);
+  line-height: 1.5;
+}
+
+/* Shared dot (identical definition also in TextLabeling.css) */
+.txl-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1200px) {
+  .txl-right {
+    flex-basis: 260px;
+    width: 260px;
+  }
+  .txl-left {
+    flex-basis: 250px;
+    width: 250px;
+  }
+}
+@media (max-width: 900px) {
+  .txl-editor {
+    flex-direction: column;
+    height: auto;
+  }
+  .txl-left,
+  .txl-right {
+    width: 100%;
+    flex-basis: auto;
+  }
+  .txl-list {
+    max-height: 240px;
+  }
+  .txl-doc {
+    max-height: 55vh;
+  }
+}

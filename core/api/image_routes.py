@@ -28,7 +28,7 @@ from core.models.image_asset import ImageAsset
 from core.services.auth_service import User, get_current_user
 from core.services.task_service import create_task_record
 from core.settings import settings
-from core.storage import get_minio_client as _get_minio_client
+from core.storage import get_minio_client as _get_minio_client, get_minio_public_client
 
 # ---------------------------------------------------------------------------
 # Image pipeline imports (data-intelligence-system added via core.paths)
@@ -142,7 +142,8 @@ def _presigned_url(mc: Minio, object_name: str) -> Optional[str]:
     if not object_name:
         return None
     try:
-        return mc.presigned_get_object(settings.MINIO_BUCKET_NAME, object_name)
+        # Presign against the PUBLIC endpoint so the URL opens in the browser.
+        return get_minio_public_client().presigned_get_object(settings.MINIO_BUCKET_NAME, object_name)
     except Exception as exc:
         logger.warning("Failed to generate presigned URL for '%s': %s", object_name, exc)
         return None
@@ -661,10 +662,33 @@ async def search_images(
             detail="Failed to generate text embedding for search query",
         )
 
+    # Embeddings are written to a per-dataset collection by the image task
+    # (store_image_vectors_in_qdrant with f"{dataset_id}_images"); query that
+    # same collection. The global settings.QDRANT_IMAGE_COLLECTION is never
+    # populated, which is why search previously always came back empty.
+    collection_name = f"{dataset_id}_images"
+
+    # search_similar() logs-and-swallows a missing-collection error and returns
+    # [], so a search issued before embeddings exist would masquerade as an
+    # empty-but-successful result. Surface that state distinctly instead.
+    embedded_stmt = select(func.count(ImageAsset.id)).where(
+        ImageAsset.dataset_id == dataset_id,
+        ImageAsset.embedding_id.is_not(None),
+    )
+    embedded_count = (await db.execute(embedded_stmt)).scalar() or 0
+    if embedded_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "No image embeddings found for this dataset. Generate "
+                "embeddings before running a similarity search."
+            ),
+        )
+
     # Search Qdrant
     hits = search_similar(
         query_vector=query_vector,
-        collection_name=settings.QDRANT_IMAGE_COLLECTION,
+        collection_name=collection_name,
         top_k=payload.top_k,
     )
 

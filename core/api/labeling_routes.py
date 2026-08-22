@@ -6,6 +6,8 @@ import asyncio
 from typing import Any, Optional
 from uuid import UUID
 
+import pandas as pd
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -280,10 +282,18 @@ async def preview_rules(
                     safe: dict = {}
                     for k, v in row.items():
                         try:
-                            if v is None:
+                            # NaN / ±inf are float instances but invalid JSON
+                            # (Starlette serializes with allow_nan=False), so they
+                            # must be mapped to None or the whole response 500s.
+                            if v is None or (
+                                isinstance(v, float)
+                                and (v != v or v in (float("inf"), float("-inf")))
+                            ):
                                 safe[str(k)] = None
                             elif isinstance(v, (int, float, bool, str)):
                                 safe[str(k)] = v
+                            elif pd.isna(v):
+                                safe[str(k)] = None
                             else:
                                 safe[str(k)] = str(v)
                         except Exception:  # noqa: BLE001

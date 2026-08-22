@@ -1,7 +1,7 @@
 import { Config } from "@stencil/core";
 
 export const config: Config = {
-  namespace: "orchestraty-ui",
+  namespace: "datahandler-ui",
   outputTargets: [
     {
       type: "dist",

@@ -3,11 +3,13 @@ Rule-Based Labeling Engine — applies configurable rules to assign labels.
 """
 
 import re
+import math
 import logging
 from dataclasses import dataclass, field, asdict
 from typing import Any
 
 import pandas as pd
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -201,8 +203,18 @@ class RuleEngine:
                 results.append(False)
                 continue
             try:
+                # Decide numeric-vs-text ONCE from the column's dtype (not from
+                # the individual cell) so equality never coerces a text value
+                # like '007' to a number. Booleans are treated as text.
+                col_series = df[cond.column]
+                column_is_numeric = (
+                    pd.api.types.is_numeric_dtype(col_series)
+                    and not pd.api.types.is_bool_dtype(col_series)
+                )
                 cell = df.iat[row_idx, df.columns.get_loc(cond.column)]
-                results.append(RuleEngine._evaluate_condition(cond, cell))
+                results.append(
+                    RuleEngine._evaluate_condition(cond, cell, column_is_numeric)
+                )
             except Exception:  # noqa: BLE001
                 results.append(False)
         if rule.logic == "or":
@@ -212,10 +224,29 @@ class RuleEngine:
     # ── Single-condition evaluation ─────────────────────────────────────
 
     @staticmethod
-    def _evaluate_condition(rule: RuleCondition, value: Any) -> bool:  # noqa: C901
-        """Return *True* if *value* satisfies the condition's operator + value."""
+    def _evaluate_condition(  # noqa: C901
+        rule: RuleCondition,
+        value: Any,
+        column_is_numeric: bool | None = None,
+    ) -> bool:
+        """Return *True* if *value* satisfies the condition's operator + value.
+
+        ``column_is_numeric`` states whether the value's *column* is genuinely
+        numeric. When the engine calls this it is derived once from the column
+        dtype; when omitted we infer it from the cell value's Python type. It
+        governs equality typing so a text column never has ``'007'`` coerced to
+        ``7``.
+        """
         op = rule.operator
         target = rule.value
+
+        # Infer numeric-ness from the cell type when the caller didn't supply
+        # it (e.g. direct/legacy callers). numpy floats subclass ``float`` but
+        # numpy ints do not subclass ``int``, so check the numpy ABCs too.
+        if column_is_numeric is None:
+            column_is_numeric = isinstance(
+                value, (int, float, np.integer, np.floating)
+            ) and not isinstance(value, (bool, np.bool_))
 
         # Null checks (independent of target)
         if op == "is_null":
@@ -250,23 +281,46 @@ class RuleEngine:
 
         # --- in_list ---
         if op == "in_list":
-            if not isinstance(target, list):
-                logger.warning("in_list expects a list value; got %s", type(target).__name__)
+            # Accept a real list/tuple/set OR a comma-separated string (the UI
+            # sometimes submits "a,b,c" instead of a JSON array).
+            if isinstance(target, str):
+                candidates = [t.strip() for t in target.split(",") if t.strip()]
+            elif isinstance(target, (list, tuple, set)):
+                candidates = list(target)
+            else:
+                logger.warning(
+                    "in_list expects a list or comma-separated string; got %s",
+                    type(target).__name__,
+                )
                 return False
-            return value in target
+            # 1. Raw + string-normalised membership so a numeric column value
+            #    (5) matches a UI list of strings (['5']) and vice-versa.
+            if value in candidates:
+                return True
+            if str(value) in [str(c) for c in candidates]:
+                return True
+            # 2. Numeric membership — coerce both sides so 5 matches '5.0', etc.
+            try:
+                num_val = _coerce_numeric(value)
+            except (TypeError, ValueError):
+                return False
+            for c in candidates:
+                try:
+                    if _coerce_numeric(c) == num_val:
+                        return True
+                except (TypeError, ValueError):
+                    continue
+            return False
 
         # --- Equality ---
+        # Type is decided ONCE from the column dtype (column_is_numeric): text
+        # columns compare as strings (so '007' != 7 and 'inf' stays literal),
+        # numeric columns compare numerically (so 7 == 7.0 == '7').
         if op == "equals":
-            try:
-                return value == target or _coerce_numeric(value) == _coerce_numeric(target)
-            except (TypeError, ValueError):
-                return str(value) == str(target)
+            return _values_equal(value, target, column_is_numeric)
 
         if op == "not_equals":
-            try:
-                return value != target and _coerce_numeric(value) != _coerce_numeric(target)
-            except (TypeError, ValueError):
-                return str(value) != str(target)
+            return not _values_equal(value, target, column_is_numeric)
 
         # --- Comparison operators (numeric coercion) ---
         if op in ("greater_than", "less_than", "greater_equal", "less_equal"):
@@ -445,11 +499,57 @@ class RuleEngine:
 
 # ── Helpers ─────────────────────────────────────────────────────────────
 
+# Tokens that ``float()`` happily parses into infinities / NaN but which, as
+# *strings* coming from a data cell, are almost always literal text.
+_NONFINITE_TOKENS = frozenset({
+    "inf", "+inf", "-inf", "infinity", "+infinity", "-infinity",
+    "nan", "+nan", "-nan",
+})
+
+
 def _coerce_numeric(val: Any) -> float:
-    """Best-effort conversion to float for comparison operators."""
-    if isinstance(val, (int, float)):
+    """Best-effort conversion to float for numeric comparison operators.
+
+    Genuine numbers pass straight through. Strings are coerced *cautiously*: we
+    refuse to turn a leading-zero code (``'007'``) or a non-finite token
+    (``'inf'`` / ``'nan'``) into a float, because those are almost always text
+    identifiers — coercing them yields false matches like ``'007' == 7`` or
+    ``'inf' > 999999``. Refused / unparseable values raise ``ValueError`` so the
+    calling operator falls through to its safe non-match branch. Booleans are
+    never treated as 1/0.
+    """
+    if isinstance(val, (bool, np.bool_)):
+        raise ValueError("bool is not a numeric comparison operand")
+    if isinstance(val, (int, float, np.integer, np.floating)):
         return float(val)
-    return float(val)
+    if isinstance(val, str):
+        s = val.strip()
+        if not s:
+            raise ValueError("empty string is not numeric")
+        if s.lower() in _NONFINITE_TOKENS:
+            raise ValueError(f"non-finite string {val!r} refused")
+        if re.match(r"^[+-]?0\d", s):  # leading-zero code like 007 / -012
+            raise ValueError(f"leading-zero string {val!r} refused")
+        f = float(s)  # raises ValueError for non-numeric text — caller handles
+        if not math.isfinite(f):
+            raise ValueError(f"non-finite value {val!r} refused")
+        return f
+    return float(val)  # last resort for other numeric-likes
+
+
+def _values_equal(value: Any, target: Any, column_is_numeric: bool) -> bool:
+    """Type-aware equality used by ``equals`` / ``not_equals``.
+
+    For a numeric column we compare numerically (falling back to string compare
+    if the target can't be coerced). For a text column we compare as strings
+    only and never ``float()`` the value, so ``'007' != 7``.
+    """
+    if column_is_numeric:
+        try:
+            return _coerce_numeric(value) == _coerce_numeric(target)
+        except (TypeError, ValueError):
+            return str(value) == str(target)
+    return str(value) == str(target)
 
 
 def _parse_range(target: Any) -> tuple[float | None, float | None]:

@@ -1,5 +1,5 @@
 /**
- * Orchestraty Stencil Web Component Wrappers
+ * Data Handler Stencil Web Component Wrappers
  *
  * These are vanilla Custom Element implementations that mirror the Stencil
  * components defined in ../../../stencil-ui/. They work directly in the
@@ -12,11 +12,11 @@ class OrcSpinnerElement extends HTMLElement {
   connectedCallback() {
     const size = this.getAttribute("size") || "md";
     const dim = size === "sm" ? 20 : size === "lg" ? 48 : 32;
-    // Render the Orchestraty logo as the spinning element. Replaces the old
+    // Render the Data Handler logo as the spinning element. Replaces the old
     // circle-with-arc spinner so every loading state across the app shows
     // the brand mark spinning instead of a generic wheel.
     this.innerHTML = `<img
-      src="/orchestraty-icon.svg"
+      src="/datahandler-icon.svg"
       alt="Loading"
       width="${dim}"
       height="${dim}"

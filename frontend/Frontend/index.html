@@ -3,13 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Orchestraty — Local</title>
-    <meta name="description" content="Orchestraty localhost — single-user AI data operating system." />
+    <title>Data Handler</title>
+    <meta name="description" content="Data Handler — single-user AI data operating system." />
+    <!-- Set the theme before first paint to avoid a flash. Persists via localStorage,
+         falls back to the OS colour-scheme preference, then to dark. -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("dh-theme");
+          if (t !== "light" && t !== "dark") {
+            t = (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) ? "light" : "dark";
+          }
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- No favicon: keep the browser tab clean (blank icon, no logo). -->
+    <link rel="icon" href="data:," />
   </head>
   <body>
     <div id="root"></div>

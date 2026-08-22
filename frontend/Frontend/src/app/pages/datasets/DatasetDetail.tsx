@@ -24,7 +24,11 @@ export default function DatasetDetail() {
 
   useEffect(() => {
     if (!id) return;
-    datasetApi.get(id).then((r) => setDataset(r.data)).catch(() => {}).finally(() => setLoading(false));
+    datasetApi.get(id).then((r) => {
+      // GET /datasets/{id} returns a {dataset, versions, metadata} wrapper.
+      const data = r.data as Record<string, unknown>;
+      setDataset((data.dataset as Record<string, unknown>) ?? data);
+    }).catch(() => {}).finally(() => setLoading(false));
     datasetApi.getVersions(id).then((r) => {
       const v = Array.isArray(r.data) ? r.data : r.data.versions || [];
       setVersions(v);
@@ -54,16 +58,21 @@ export default function DatasetDetail() {
   };
 
   const statusColor = (s: string) => {
-    const colors: Record<string, string> = { raw: "#a7a7a7", processed: "#1DB954", labeled: "#f59e0b", reviewed: "#1ED760", ready: "#22c55e" };
-    return colors[s] || "#a7a7a7";
+    const colors: Record<string, string> = { raw: "var(--dash-text-secondary)", processed: "var(--dash-text)", labeled: "var(--dash-text-secondary)", reviewed: "var(--dash-text)", ready: "var(--dash-text)" };
+    return colors[s] || "var(--dash-text-secondary)";
   };
 
   if (loading) return <div className="empty-state"><h3>Loading...</h3></div>;
   if (!dataset) return <div className="empty-state"><h3>Dataset not found</h3></div>;
 
-  const latestVersion = versions.length > 0 ? versions[versions.length - 1] : null;
+  const latestVersion = versions.length > 0
+    ? versions.reduce((a, b) => ((a.version_number ?? 0) >= (b.version_number ?? 0) ? a : b))
+    : null;
   const totalSize = versions.reduce((sum, v) => sum + (v.file_size || 0), 0);
   const dsStatus = String(dataset.status || "raw");
+  const dsSourceType = String(dataset.source_type || "");
+  const isImageDs = dsSourceType === "image";
+  const isTextDs = dsSourceType === "text";
 
   return (
     <div>
@@ -124,18 +133,45 @@ export default function DatasetDetail() {
           <div className="card">
             <div className="card-header"><h3>Pipeline Actions</h3></div>
             <div className="dd-actions">
-              <Link to="/structuring" className="dd-action-card">
-                <span className="dd-action-card__icon">&#9881;</span>
-                <div><span className="dd-action-card__title">Structuring</span><span className="dd-action-card__desc">Clean and normalize data</span></div>
-              </Link>
-              <Link to="/eda" className="dd-action-card">
-                <span className="dd-action-card__icon">&#128200;</span>
-                <div><span className="dd-action-card__title">EDA</span><span className="dd-action-card__desc">Explore and profile</span></div>
-              </Link>
-              <Link to="/labeling" className="dd-action-card">
-                <span className="dd-action-card__icon">&#1AA34A;</span>
-                <div><span className="dd-action-card__title">Rule Labeling</span><span className="dd-action-card__desc">Apply labeling rules</span></div>
-              </Link>
+              {isImageDs && (
+                <Link to={`/annotate/${id}`} className="dd-action-card">
+                  <span className="dd-action-card__icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="13" height="13" rx="2" />
+                      <path d="M20.5 9.5l-8 8L9 21l.5-3.5 8-8 3 3z" />
+                    </svg>
+                  </span>
+                  <div><span className="dd-action-card__title">Annotate Images</span><span className="dd-action-card__desc">Draw boxes &amp; polygons, manage classes, export YOLO/COCO/VOC</span></div>
+                </Link>
+              )}
+              {isTextDs && (
+                <Link to={`/text-labeling/${id}`} className="dd-action-card">
+                  <span className="dd-action-card__icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM14 2v6h6M9 13h6M9 17h6" />
+                    </svg>
+                  </span>
+                  <div><span className="dd-action-card__title">Label Text</span><span className="dd-action-card__desc">Classify documents, tag spans, export JSONL/CSV</span></div>
+                </Link>
+              )}
+              {!isTextDs && (
+                <>
+                  <Link to="/structuring" className="dd-action-card">
+                    <span className="dd-action-card__icon">&#9881;</span>
+                    <div><span className="dd-action-card__title">Structuring</span><span className="dd-action-card__desc">Clean and normalize data</span></div>
+                  </Link>
+                  <Link to="/eda" className="dd-action-card">
+                    <span className="dd-action-card__icon">&#128200;</span>
+                    <div><span className="dd-action-card__title">EDA</span><span className="dd-action-card__desc">Explore and profile</span></div>
+                  </Link>
+                  <Link to="/labeling" className="dd-action-card">
+                    <span className="dd-action-card__icon">&#1AA34A;</span>
+                    <div><span className="dd-action-card__title">Rule Labeling</span><span className="dd-action-card__desc">Apply labeling rules</span></div>
+                  </Link>
+                </>
+              )}
               <Link to="/ai-labeling" className="dd-action-card">
                 <span className="dd-action-card__icon">&#129302;</span>
                 <div><span className="dd-action-card__title">AI Labeling</span><span className="dd-action-card__desc">LLM-powered labeling</span></div>

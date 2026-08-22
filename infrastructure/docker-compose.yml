@@ -1,9 +1,12 @@
 services:
   api:
+    # Pull this prebuilt image from GHCR when available (fast install); falls
+    # back to building locally from the Dockerfile below if it isn't published.
+    image: ghcr.io/samratrajsharma/data-handler-api:latest
     build:
       context: ..
       dockerfile: infrastructure/Dockerfile
-    container_name: orchestraty-api
+    container_name: datahandler-api
     # Override the Dockerfile CMD to enable --reload so code changes on
     # the host (bind-mounted at /app) are picked up automatically without
     # restarting the container. This eliminates the "did -Refresh work?"
@@ -34,24 +37,24 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - orchestraty-net
+      - datahandler-net
     restart: unless-stopped
 
   postgres:
     image: postgres:15-alpine
-    container_name: orchestraty-postgres
+    container_name: datahandler-postgres
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: orchestraty
-      POSTGRES_PASSWORD: orchestraty_dev
-      POSTGRES_DB: orchestraty
+      POSTGRES_USER: datahandler
+      POSTGRES_PASSWORD: datahandler_dev
+      POSTGRES_DB: datahandler
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - orchestraty-net
+      - datahandler-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U orchestraty -d orchestraty"]
+      test: ["CMD-SHELL", "pg_isready -U datahandler -d datahandler"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -59,7 +62,7 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: orchestraty-minio
+    container_name: datahandler-minio
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -70,18 +73,18 @@ services:
     volumes:
       - minio_data:/data
     networks:
-      - orchestraty-net
+      - datahandler-net
     restart: unless-stopped
 
   redis:
     image: redis:7-alpine
-    container_name: orchestraty-redis
+    container_name: datahandler-redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
-      - orchestraty-net
+      - datahandler-net
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -91,10 +94,12 @@ services:
 
   # --- Phase 2: Celery Worker ---
   celery-worker:
+    # Same image as the api service (one backend image, different command).
+    image: ghcr.io/samratrajsharma/data-handler-api:latest
     build:
       context: ..
       dockerfile: infrastructure/Dockerfile
-    container_name: orchestraty-celery-worker
+    container_name: datahandler-celery-worker
     command: celery -A core.celery_app worker --loglevel=info --concurrency=2
     env_file:
       - ../.env
@@ -116,35 +121,52 @@ services:
       minio:
         condition: service_started
     networks:
-      - orchestraty-net
+      - datahandler-net
     restart: unless-stopped
 
   # --- Phase 2: Qdrant Vector Database ---
   qdrant:
     image: qdrant/qdrant:latest
-    container_name: orchestraty-qdrant
+    container_name: datahandler-qdrant
     ports:
       - "6333:6333"
       - "6334:6334"
     volumes:
       - qdrant_data:/qdrant/storage
     networks:
-      - orchestraty-net
+      - datahandler-net
     restart: unless-stopped
 
   # --- Phase 3: Ollama (Local LLM) — optional, comment out if not needed ---
   ollama:
     image: ollama/ollama:latest
-    container_name: orchestraty-ollama
+    container_name: datahandler-ollama
     ports:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
     networks:
-      - orchestraty-net
+      - datahandler-net
     restart: unless-stopped
     profiles:
       - llm
+
+  # --- Frontend: React + Vite built to static files, served by nginx.
+  #     nginx also reverse-proxies /api/* to the api service, so the whole
+  #     app is reachable from a single origin (http://localhost:3000). ---
+  frontend:
+    image: ghcr.io/samratrajsharma/data-handler-frontend:latest
+    build:
+      context: ../frontend/Frontend
+      dockerfile: Dockerfile
+    container_name: datahandler-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - datahandler-net
+    restart: unless-stopped
 
 volumes:
   postgres_data:
@@ -155,5 +177,5 @@ volumes:
   hf_cache:
 
 networks:
-  orchestraty-net:
+  datahandler-net:
     driver: bridge

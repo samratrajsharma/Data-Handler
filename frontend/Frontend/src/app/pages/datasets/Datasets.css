@@ -12,7 +12,7 @@
   position: sticky;
   top: 0;
   z-index: 5;
-  background: linear-gradient(to bottom, var(--dash-bg, #121212) 80%, transparent);
+  background: linear-gradient(to bottom, var(--dash-bg, var(--dash-bg)) 80%, transparent);
   backdrop-filter: blur(6px);
 }
 .ds-header h1 { font-size: 26px; font-weight: 700; margin: 0; color: var(--dash-text); letter-spacing: -0.02em; }
@@ -38,21 +38,21 @@
 }
 .ds-add-tile:hover {
   border-color: var(--dash-primary);
-  background: rgba(29, 185, 84, 0.04);
+  background: var(--tint);
   color: var(--dash-primary);
   transform: translateY(-1px);
 }
 .ds-add-tile__plus {
   width: 38px; height: 38px;
   border-radius: 11px;
-  background: rgba(29, 185, 84, 0.08);
+  background: var(--tint);
   color: var(--dash-primary);
   display: flex; align-items: center; justify-content: center;
   font-size: 22px; font-weight: 300;
   flex-shrink: 0;
 }
 .ds-add-tile:hover .ds-add-tile__plus {
-  background: rgba(29, 185, 84, 0.08);
+  background: var(--tint);
 }
 .ds-add-tile__label {
   font-size: 15px; font-weight: 600; color: inherit;
@@ -71,7 +71,7 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .ds-card:hover {
-  border-color: rgba(29, 185, 84,0.4);
+  border-color: var(--dash-border-strong);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.07);
 }
 
@@ -86,11 +86,12 @@
   width: 42px; height: 42px;
   border-radius: 11px;
   display: flex; align-items: center; justify-content: center;
-  color: #fff;
+  color: var(--dash-text);
   flex-shrink: 0;
 }
-.ds-card__icon--tabular { background: linear-gradient(135deg, #1DB954, #1ED760); }
-.ds-card__icon--image   { background: linear-gradient(135deg, #1ED760, #1AA34A); }
+.ds-card__icon--tabular { background: linear-gradient(135deg, var(--tint), var(--tint)); }
+.ds-card__icon--image   { background: linear-gradient(135deg, var(--tint), var(--tint)); }
+.ds-card__icon--text    { background: linear-gradient(135deg, var(--tint), var(--tint)); }
 
 .ds-card__text { flex: 1; min-width: 0; }
 
@@ -135,9 +136,9 @@
   transition: all 0.15s ease;
 }
 .ds-card__delete:hover:not(:disabled) {
-  background: rgba(220, 38, 38, 0.08);
-  border-color: rgba(220, 38, 38, 0.4);
-  color: #dc2626;
+  background: var(--tint);
+  border-color: var(--dash-border-strong);
+  color: var(--dash-primary);
 }
 .ds-card__delete:disabled {
   opacity: 0.4;
@@ -165,13 +166,13 @@
   height: 36px;
   border-radius: 50%;
   background: var(--dash-primary);
-  border: 2px solid #fff;
+  border: 2px solid var(--dash-border);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #fff;
+  color: var(--dash-text);
   z-index: 4;
   padding: 0;
   transition: all 0.15s ease;
@@ -193,7 +194,7 @@
   right: 12px;
   bottom: 6px;
   height: 10px;
-  background: rgba(29, 185, 84, 0.08);
+  background: var(--tint);
   border-radius: 5px;
   z-index: 3;
   pointer-events: auto;
@@ -202,7 +203,7 @@
   position: absolute;
   top: 0;
   height: 100%;
-  background: linear-gradient(90deg, #1ED760, #1DB954);
+  background: linear-gradient(90deg, var(--tint), var(--tint));
   border-radius: 5px;
   cursor: grab;
   transition: opacity 0.15s;
@@ -222,7 +223,7 @@
 .ds-preview-table th {
   text-align: left;
   padding: 9px 12px;
-  background: rgba(29, 185, 84, 0.04);
+  background: var(--tint);
   border-bottom: 1px solid var(--dash-border);
   font-weight: 700;
   font-size: 10.5px;
@@ -248,7 +249,7 @@
   overflow-x: auto;
   overflow-y: auto;
   max-height: 420px;
-  /* Firefox: 'auto' (not 'thin') so the scrollbar is more visible. */
+  /* firefox: 'auto' (not 'thin') so the scrollbar is more visible. */
   scrollbar-width: auto;
 }
 /* Right-edge fade: a static overlay positioned over the visible area to hint
@@ -270,28 +271,28 @@
    even at rest. */
 .ds-preview-scroll::-webkit-scrollbar { height: 14px; width: 14px; }
 .ds-preview-scroll::-webkit-scrollbar-track {
-  background: rgba(29, 185, 84, 0.06);
+  background: var(--tint);
   border-radius: 7px;
 }
 .ds-preview-scroll::-webkit-scrollbar-thumb {
-  background: rgba(22, 22, 22, 0.55);
+  background: var(--tint);
   border-radius: 7px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
-.ds-preview-scroll::-webkit-scrollbar-thumb:hover { background: rgba(22, 22, 22, 0.85); background-clip: padding-box; }
+.ds-preview-scroll::-webkit-scrollbar-thumb:hover { background: var(--tint); background-clip: padding-box; }
 
 /* Same scroll treatment for the Structuring Before/After tables. */
 .struct-ba__scroll { scrollbar-width: auto; }
 .struct-ba__scroll::-webkit-scrollbar { height: 14px; width: 14px; }
 .struct-ba__scroll::-webkit-scrollbar-track {
-  background: rgba(29, 185, 84, 0.06); border-radius: 7px;
+  background: var(--tint); border-radius: 7px;
 }
 .struct-ba__scroll::-webkit-scrollbar-thumb {
-  background: rgba(22, 22, 22, 0.55); border-radius: 7px;
+  background: var(--tint); border-radius: 7px;
   border: 2px solid transparent; background-clip: padding-box;
 }
-.struct-ba__scroll::-webkit-scrollbar-thumb:hover { background: rgba(22, 22, 22, 0.85); background-clip: padding-box; }
+.struct-ba__scroll::-webkit-scrollbar-thumb:hover { background: var(--tint); background-clip: padding-box; }
 
 .ds-preview-foot {
   padding: 6px 4px 0;
@@ -339,6 +340,63 @@
   font-size: 10.5px; color: var(--dash-text-muted);
 }
 
+/* ── Text document snippet list (text datasets' preview body) ── */
+.ds-doc-list {
+  border: 1px solid var(--dash-border);
+  border-radius: 12px;
+  background: var(--dash-surface-hover);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ds-doc { min-width: 0; }
+.ds-doc + .ds-doc { border-top: 1px solid var(--dash-border); padding-top: 10px; }
+.ds-doc__name {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--dash-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ds-doc__preview {
+  margin: 3px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--dash-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ds-doc-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--dash-border);
+  font-size: 11.5px;
+  color: var(--dash-text-muted);
+}
+.ds-doc-foot__open {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--dash-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.ds-doc-foot__open:hover { text-decoration: underline; }
+
+/* Small hint line under a form control (e.g. the split-strategy select). */
+.ds-field-hint {
+  font-size: 11.5px;
+  color: var(--dash-text-muted);
+  margin-top: 6px;
+}
+
 @media (max-width: 720px) {
   .ds-image-strip { grid-template-columns: repeat(4, 1fr); }
 }
@@ -355,10 +413,10 @@
   text-transform: capitalize;
   white-space: nowrap;
 }
-.ds-status--ready     { background: rgba(5,150,105,0.1); color: #047857; }
-.ds-status--processed { background: rgba(29, 185, 84, 0.08); color: #1AA34A; }
-.ds-status--labeled   { background: rgba(29, 185, 84, 0.08); color: #1AA34A; }
-.ds-status--reviewed  { background: rgba(29, 185, 84, 0.08); color: #1AA34A; }
+.ds-status--ready     { background: var(--tint); color: var(--dash-primary); }
+.ds-status--processed { background: var(--tint); color: var(--dash-primary); }
+.ds-status--labeled   { background: var(--tint); color: var(--dash-primary); }
+.ds-status--reviewed  { background: var(--tint); color: var(--dash-primary); }
 .ds-status--raw       { background: var(--dash-surface-hover); color: var(--dash-text-secondary); }
 
 /* Image dataset: folder/file pick + view-all gallery */
@@ -373,7 +431,7 @@
 .ds-gallery-modal__close:hover { color: var(--dash-text); }
 .ds-gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; overflow-y: auto; padding: 2px 4px 4px 2px; }
 .ds-gallery-tile { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.ds-gallery-tile img, .ds-gallery-tile__ph { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 8px; background: var(--dash-bg, #0a0a0a); display: block; }
+.ds-gallery-tile img, .ds-gallery-tile__ph { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 8px; background: var(--dash-bg, var(--dash-bg)); display: block; }
 .ds-gallery-tile__ph { display: flex; align-items: center; justify-content: center; color: var(--dash-text-muted); }
 .ds-gallery-tile__name { font-size: 10px; color: var(--dash-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-gallery-loading { padding: 14px; text-align: center; color: var(--dash-text-muted); font-size: 12.5px; }

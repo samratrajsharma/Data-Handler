@@ -1,0 +1,117 @@
+/* ── Text Labeling — dataset picker ── */
+
+.txl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.txl-card {
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.2s;
+}
+.txl-card:hover {
+  border-color: var(--dash-border-strong);
+}
+.txl-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.txl-card__head h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dash-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.txl-card__desc {
+  font-size: 12.5px;
+  color: var(--dash-text-muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.txl-card__loading {
+  font-size: 12px;
+  color: var(--dash-text-muted);
+  padding: 6px 0;
+}
+.txl-card__stats {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--dash-text-muted);
+}
+.txl-card__stats strong {
+  color: var(--dash-text);
+  font-weight: 700;
+}
+
+.txl-progress {
+  height: 6px;
+  background: var(--dash-surface-hover);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.txl-progress__fill {
+  height: 100%;
+  border-radius: 6px;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
+.txl-card__pct {
+  font-size: 11px;
+  color: var(--dash-text-muted);
+}
+
+.txl-card__chips {
+  margin-top: 2px;
+}
+.txl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: default;
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.txl-chip__count {
+  color: var(--dash-text-muted);
+  font-weight: 600;
+}
+
+.txl-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.txl-card__open {
+  align-self: flex-start;
+  margin-top: auto;
+  text-decoration: none;
+}
+
+.txl-link {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.txl-link:hover {
+  text-decoration: underline;
+}

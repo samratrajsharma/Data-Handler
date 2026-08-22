@@ -89,7 +89,6 @@ class PreviewRequest(BaseModel):
 
 async def _get_user_llm_config(
     db: AsyncSession,
-    user_id,
     provider: str = None,
     model_name: str = None,
 ):
@@ -107,12 +106,10 @@ async def _get_user_llm_config(
 
     if provider:
         stmt = select(LLMConfigRecord).where(
-            LLMConfigRecord.user_id == user_id,
             LLMConfigRecord.provider == provider,
         )
     else:
         stmt = select(LLMConfigRecord).where(
-            LLMConfigRecord.user_id == user_id,
             LLMConfigRecord.is_default == True,  # noqa: E712
         )
 
@@ -197,7 +194,7 @@ async def predict_labels(
     )
 
     # Resolve LLM config so we can pass credentials to the worker
-    llm_config = await _get_user_llm_config(db, payload.provider, payload.model_name)
+    llm_config = await _get_user_llm_config(db, provider=payload.provider, model_name=payload.model_name)
 
     import uuid as _uuid
 
@@ -263,7 +260,7 @@ async def preview_predictions(
     _dataset, version = await _resolve_dataset_version(
         db, payload.dataset_id, payload.version_number, user=current_user,
     )
-    llm_config = await _get_user_llm_config(db, payload.provider, payload.model_name)
+    llm_config = await _get_user_llm_config(db, provider=payload.provider, model_name=payload.model_name)
 
     # Load the dataset file off the event loop (blocking download + parse).
     from data_intelligence.tasks.structuring_tasks import _load_dataset_file
@@ -323,7 +320,7 @@ async def predict_image_labels(
     """Trigger AI-powered label prediction on an image dataset (async Celery task)."""
     dataset = await assert_dataset_access(db, payload.dataset_id, current_user)
 
-    llm_config = await _get_user_llm_config(db, payload.provider, payload.model_name)
+    llm_config = await _get_user_llm_config(db, provider=payload.provider, model_name=payload.model_name)
 
     import uuid as _uuid
 
@@ -408,7 +405,7 @@ async def generate_synthetic(
     db: AsyncSession = Depends(get_db),
 ):
     """Generate synthetic text samples for a given label (synchronous)."""
-    llm_config = await _get_user_llm_config(db, payload.provider, payload.model_name)
+    llm_config = await _get_user_llm_config(db, provider=payload.provider, model_name=payload.model_name)
 
     from labeling.ai_labeler import generate_synthetic_data
 

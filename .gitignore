@@ -1,5 +1,5 @@
 # ============================================
-# Orchestraty .gitignore
+# Data Handler .gitignore
 # ============================================
 
 # --- Python ---
@@ -137,8 +137,8 @@ kubeconfig
 *.kubeconfig
 
 # --- Session tokens (frontend persistence) ---
-.orchestraty_session
-.orchestraty_admin_session
+.datahandler_session
+.datahandler_admin_session
 
 # --- Celery ---
 celerybeat-schedule
@@ -162,7 +162,8 @@ postgres_data/
 
 # --- CLIP / Transformers model cache ---
 .transformers_cache/
-models/
+/models/
+!/core/models/
 *.safetensors
 *.bin
 

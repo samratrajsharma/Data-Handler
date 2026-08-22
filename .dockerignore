@@ -1,0 +1,39 @@
+# Version control & CI
+.git/
+.github/
+.gitignore
+
+# Python bytecode / test & lint caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets / local env — never bake into the image
+.env
+.env.*
+!.env.example
+
+# Frontend is built as its own image; the backend image doesn't need its source
+frontend/
+node_modules/
+
+# Docs & analysis artifacts — not needed at runtime
+docs/
+mkdocs.yml
+*.pdf
+*.html
+
+# OS / editor / logs
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log

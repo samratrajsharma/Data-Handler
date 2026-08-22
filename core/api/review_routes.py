@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from core.database import get_db
 from core.models.background_task import BackgroundTask
@@ -259,8 +260,13 @@ async def submit_review_actions(
             }
         )
 
-    # Persist the updated result back to the task record
+    # Persist the updated result back to the task record.
+    # The approve/reject/relabel logic above mutates entries *inside* the
+    # nested JSONB dict in place, so reassigning the same object is invisible
+    # to SQLAlchemy's dirty check and no UPDATE would be emitted. flag_modified
+    # forces the column to be marked dirty so the change is actually written.
     label_task.result = task_result
+    flag_modified(label_task, "result")
     await db.flush()
 
     # Store review actions as dataset metadata
@@ -318,10 +324,15 @@ async def get_review_status(
     for entry in actions_log:
         latest_by_item[entry["item_id"]] = entry["action"]
 
+    # actions_log stores the request verb ("approve"/"reject"/"relabel"), but the
+    # status counts are keyed by the past-tense form. Map before counting —
+    # otherwise every count stays 0 even though actions were recorded.
+    _verb_to_status = {"approve": "approved", "reject": "rejected", "relabel": "relabeled"}
     counts = {"approved": 0, "rejected": 0, "relabeled": 0}
     for action in latest_by_item.values():
-        if action in counts:
-            counts[action] += 1
+        status_key = _verb_to_status.get(action, action)
+        if status_key in counts:
+            counts[status_key] += 1
 
     total_reviewed = sum(counts.values())
 
@@ -419,10 +430,10 @@ async def get_export_results(
 
     if export_path:
         try:
-            from core.storage import get_minio_client
+            from core.storage import get_minio_public_client
             from core.settings import settings
 
-            client = get_minio_client()
+            client = get_minio_public_client()
             from datetime import timedelta
 
             download_url = client.presigned_get_object(

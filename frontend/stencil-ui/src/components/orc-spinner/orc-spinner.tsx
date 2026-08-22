@@ -5,12 +5,12 @@ export class OrcSpinner {
   @Prop() size: "sm" | "md" | "lg" = "md";
 
   render() {
-    // Renders the Orchestraty logo as the spinning element instead of a
+    // Renders the Data Handler logo as the spinning element instead of a
     // generic circle-with-arc — every loading state in the app shows the
     // brand mark spinning.
     return (
       <img
-        src="/orchestraty-icon.svg"
+        src="/datahandler-icon.svg"
         alt="Loading"
         class={`spinner spinner--${this.size}`}
       />

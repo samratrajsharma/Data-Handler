@@ -17,14 +17,21 @@ class Settings(BaseSettings):
 
     # ── Database ──────────────────────────────────────────────────────────
     DATABASE_URL: str = (
-        "postgresql+asyncpg://orchestraty:orchestraty_dev@localhost:5432/orchestraty"
+        "postgresql+asyncpg://datahandler:datahandler_dev@localhost:5432/datahandler"
     )
 
     # ── MinIO / S3-compatible object storage ──────────────────────────────
     MINIO_ENDPOINT: str = "localhost:9000"
+    # Browser-reachable MinIO address, used ONLY when presigning download
+    # URLs. Inside Docker the app reaches MinIO at "minio:9000", but the
+    # browser must use a host-reachable address (the published port).
+    MINIO_PUBLIC_ENDPOINT: str = "localhost:9000"
+    # Explicit region so presigning never needs a live GetBucketLocation
+    # call (the public client cannot reach MinIO from inside the container).
+    MINIO_REGION: str = "us-east-1"
     MINIO_ACCESS_KEY: str = "minioadmin"
     MINIO_SECRET_KEY: str = "minioadmin"
-    MINIO_BUCKET_NAME: str = "orchestraty"
+    MINIO_BUCKET_NAME: str = "datahandler"
     MINIO_USE_SSL: bool = False
 
     # ── Redis ─────────────────────────────────────────────────────────────
@@ -33,7 +40,7 @@ class Settings(BaseSettings):
     # ── Qdrant (Vector DB) ──────────────────────────────────────────────
     QDRANT_HOST: str = "qdrant"
     QDRANT_PORT: int = 6333
-    QDRANT_COLLECTION: str = "orchestraty_embeddings"
+    QDRANT_COLLECTION: str = "datahandler_embeddings"
 
     # ── Celery ───────────────────────────────────────────────────────────
     CELERY_BROKER_URL: str = "redis://redis:6379/1"
@@ -55,7 +62,7 @@ class Settings(BaseSettings):
     IMAGE_MAX_UPLOAD_MB: int = 50
     IMAGE_BATCH_MAX_COUNT: int = 100
     CLIP_MODEL_NAME: str = "openai/clip-vit-base-patch32"
-    QDRANT_IMAGE_COLLECTION: str = "orchestraty_image_embeddings"
+    QDRANT_IMAGE_COLLECTION: str = "datahandler_image_embeddings"
     IMAGE_ALLOWED_EXTENSIONS: str = ".png,.jpg,.jpeg,.webp,.tiff,.tif,.bmp"
 
     # ── Image embedding performance (CPU-friendly) ────────────────────────

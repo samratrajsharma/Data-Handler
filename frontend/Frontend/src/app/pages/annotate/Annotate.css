@@ -1,0 +1,129 @@
+/* ── Annotate picker page ─────────────────────────────────────────────── */
+
+.ann-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 16px;
+}
+
+.ann-pick-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ann-pick-card__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ann-pick-card__name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--dash-text);
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ann-pick-card__count {
+  font-size: 12px;
+  color: var(--dash-text-muted);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.ann-pick-card__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ann-pick-card__bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--dash-surface-hover);
+  border: 1px solid var(--dash-border);
+  overflow: hidden;
+}
+
+.ann-pick-card__bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.ann-pick-card__pct {
+  font-size: 12px;
+  color: var(--dash-text-secondary);
+}
+
+.ann-pick-card__chips {
+  min-height: 26px;
+}
+
+.ann-pick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ann-pick-chip__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.ann-pick-chip__n {
+  color: var(--dash-text-muted);
+  font-size: 11px;
+}
+
+.ann-pick-card__nochips {
+  font-size: 12px;
+  color: var(--dash-text-muted);
+  font-style: italic;
+}
+
+.ann-pick-card__loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--dash-text-muted);
+  min-height: 26px;
+}
+
+.ann-pick-card__foot {
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.ann-pick-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--dash-text-muted);
+  font-size: 13px;
+  padding: 40px 0;
+  justify-content: center;
+}
+
+.ann-pick-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--dash-border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: ann-spin 0.7s linear infinite;
+  flex: 0 0 auto;
+}
+
+@keyframes ann-spin {
+  to { transform: rotate(360deg); }
+}

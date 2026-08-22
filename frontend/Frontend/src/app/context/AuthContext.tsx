@@ -32,7 +32,7 @@ interface AuthCtx {
 // Must line up with auth_service.LOCAL_USER_ID on the backend.
 const LOCAL_USER: User = {
   id: "00000000-0000-0000-0000-000000000001",
-  email: "local@orchestraty.local",
+  email: "local@datahandler.local",
   full_name: "Local User",
   role: "superadmin",
   is_active: true,

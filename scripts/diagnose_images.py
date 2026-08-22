@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Orchestraty image-pipeline diagnostic.
+Data Handler image-pipeline diagnostic.
 
 Runs every stage of the image pipeline in isolation and prints a clear
 PASS / FAIL report so we can see exactly what is broken.

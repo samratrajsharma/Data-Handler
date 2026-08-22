@@ -219,17 +219,30 @@ def embed_images(
     image_bytes_list: list[bytes],
     model_name: str = "openai/clip-vit-base-patch32",
     batch_size: Optional[int] = None,
-) -> np.ndarray:
+    return_kept_indices: bool = False,
+) -> "np.ndarray | tuple[np.ndarray, list[int]]":
     """
     Generate CLIP embeddings for a list of images.
+
+    Images that cannot be decoded are skipped, so the returned array can have
+    FEWER rows than ``image_bytes_list``. Callers that pair embeddings back to
+    per-image ids MUST know which inputs were kept — otherwise a single bad
+    image shifts every later embedding onto the wrong id. Pass
+    ``return_kept_indices=True`` to also receive the list of input indices that
+    were actually embedded (aligned 1:1 with the returned rows).
 
     Args:
         image_bytes_list: List of raw image bytes.
         model_name: HuggingFace model identifier.
         batch_size: Number of images to process per batch.
+        return_kept_indices: When True, return ``(embeddings, kept_indices)``
+            instead of just ``embeddings`` (default False keeps the original
+            return shape for existing callers).
 
     Returns:
-        numpy array of shape (n_images, embedding_dim).
+        numpy array of shape (n_kept, embedding_dim); or, when
+        ``return_kept_indices`` is True, a tuple of that array and the list of
+        indices into ``image_bytes_list`` that were successfully embedded.
     """
     import torch
     from PIL import Image
@@ -243,14 +256,17 @@ def embed_images(
 
     model, processor, device = load_clip_model(model_name)
     all_embeddings = []
+    kept_indices: list[int] = []
 
     for i in range(0, len(image_bytes_list), batch_size):
         batch_bytes = image_bytes_list[i : i + batch_size]
         images = []
-        for img_bytes in batch_bytes:
+        batch_indices: list[int] = []
+        for j, img_bytes in enumerate(batch_bytes):
             try:
                 img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
                 images.append(img)
+                batch_indices.append(i + j)
             except Exception as exc:
                 logger.warning("Skipping invalid image in batch: %s", exc)
                 continue
@@ -267,12 +283,18 @@ def embed_images(
             embeddings = outputs / outputs.norm(dim=-1, keepdim=True)
             all_embeddings.append(embeddings.cpu().numpy())
 
+        # Record which inputs this batch produced vectors for — only after the
+        # batch has actually been encoded — so kept_indices stays aligned 1:1
+        # with the stacked embedding rows.
+        kept_indices.extend(batch_indices)
         logger.debug("Embedded batch %d-%d", i, i + len(images))
 
     if not all_embeddings:
-        return np.empty((0, 512), dtype=np.float32)
+        empty = np.empty((0, 512), dtype=np.float32)
+        return (empty, kept_indices) if return_kept_indices else empty
 
-    return np.concatenate(all_embeddings, axis=0)
+    stacked = np.concatenate(all_embeddings, axis=0)
+    return (stacked, kept_indices) if return_kept_indices else stacked
 
 
 # ---------------------------------------------------------------------------

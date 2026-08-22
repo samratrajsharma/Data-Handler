@@ -28,7 +28,7 @@ class TaskResponse(BaseModel):
     status: str
     progress: float
     progress_message: Optional[str] = None
-    dataset_id: UUID
+    dataset_id: Optional[UUID] = None
     created_by: Optional[UUID] = None
     parameters: dict = {}
     result: Optional[dict] = None

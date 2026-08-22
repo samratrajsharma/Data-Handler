@@ -1,5 +1,5 @@
 """
-Celery application configuration for Orchestraty.
+Celery application configuration for Data Handler.
 Handles async background tasks: data structuring, EDA, labeling.
 """
 
@@ -8,7 +8,7 @@ from celery import Celery
 from core.settings import settings
 
 app = Celery(
-    "orchestraty",
+    "datahandler",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
 )
@@ -40,6 +40,7 @@ app.conf.update(
         "data_intelligence.tasks.ai_labeling_tasks",
         "data_intelligence.tasks.review_tasks",
         "data_intelligence.tasks.workflow_tasks",
+        "data_intelligence.tasks.annotation_tasks",
     ],
 )
 

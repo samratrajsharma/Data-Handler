@@ -8,8 +8,8 @@
 
 /* ── Propagation explainer card ── */
 .ail-explainer {
-  background: rgba(29, 185, 84, 0.05);
-  border: 1px solid rgba(30, 215, 96, 0.18);
+  background: var(--tint);
+  border: 1px solid var(--dash-border-strong);
   border-radius: 12px;
   padding: 14px 16px;
   margin-bottom: 18px;
@@ -17,7 +17,7 @@
 .ail-explainer__title {
   font-size: 13px;
   font-weight: 700;
-  color: #1DB954;
+  color: var(--dash-primary);
   margin-bottom: 8px;
 }
 .ail-explainer__steps {
@@ -32,15 +32,15 @@
   font-size: 12px;
   color: var(--dash-text-secondary);
   padding: 7px 10px;
-  background: var(--color-surface, #181818);
+  background: var(--color-surface, var(--dash-surface));
   border-radius: 6px;
   margin-top: 6px;
   line-height: 1.5;
 }
 .ail-explainer__note--warn {
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  color: #92400e;
+  background: var(--tint);
+  border: 1px solid var(--dash-border-strong);
+  color: var(--dash-primary);
 }
 
 /* ── Presets ── */
@@ -50,7 +50,7 @@
   gap: 8px;
 }
 .ail-preset {
-  background: var(--color-surface, #181818);
+  background: var(--color-surface, var(--dash-surface));
   border: 1.5px solid var(--dash-border);
   border-radius: 10px;
   padding: 10px 12px;
@@ -62,10 +62,10 @@
   font-family: inherit;
   transition: all 0.15s;
 }
-.ail-preset:hover { border-color: rgba(29, 185, 84, 0.4); }
+.ail-preset:hover { border-color: var(--dash-border-strong); }
 .ail-preset--active {
   border-color: var(--dash-primary);
-  background: rgba(29, 185, 84, 0.06);
+  background: var(--tint);
 }
 .ail-preset__label { font-size: 13px; font-weight: 700; color: var(--dash-text); }
 .ail-preset__sub { font-size: 11px; color: var(--dash-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
@@ -91,13 +91,13 @@
   margin-top: 18px;
   padding: 12px 14px;
   background: var(--dash-primary-dim);
-  border: 1px solid rgba(29, 185, 84, 0.18);
+  border: 1px solid var(--dash-border-strong);
   border-radius: 10px;
 }
 .ail-recommend__title {
   font-size: 12.5px;
   font-weight: 700;
-  color: #1DB954;
+  color: var(--dash-primary);
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -113,9 +113,9 @@
 .ail-recommend__list li:last-child { margin-bottom: 0; }
 
 /* Tone variants for summary card values */
-.ail-summary__value--ok { color: #16a34a; }
-.ail-summary__value--warn { color: #b45309; }
-.ail-summary__value--bad { color: #dc2626; }
+.ail-summary__value--ok { color: var(--dash-primary); }
+.ail-summary__value--warn { color: var(--dash-primary); }
+.ail-summary__value--bad { color: var(--dash-primary); }
 .ail-summary__value--neutral { color: var(--dash-text); }
 
 /* Aggregation source toggle — checkbox card with name + subtitle.
@@ -129,12 +129,12 @@
   border: 1px solid var(--dash-border);
   border-radius: 9px;
   cursor: pointer;
-  background: var(--color-surface, #181818);
+  background: var(--color-surface, var(--dash-surface));
   transition: border-color 0.12s, background 0.12s;
 }
 .ail-source-toggle:hover {
-  border-color: rgba(29, 185, 84, 0.4);
-  background: rgba(29, 185, 84, 0.03);
+  border-color: var(--dash-border-strong);
+  background: var(--tint);
 }
 .ail-source-toggle input[type="checkbox"] {
   margin-top: 3px;
@@ -178,7 +178,7 @@
   padding: 12px 14px;
   border: 1px solid var(--dash-border);
   border-radius: 10px;
-  background: var(--color-surface, #181818);
+  background: var(--color-surface, var(--dash-surface));
   color: var(--dash-text);
   font-family: inherit;
   font-size: 13.5px;
@@ -186,7 +186,7 @@
   resize: vertical;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-.ail-textarea:hover { border-color: rgba(29, 185, 84, 0.45); }
+.ail-textarea:hover { border-color: var(--dash-border-strong); }
 .ail-textarea:focus {
   outline: none;
   border-color: var(--dash-primary);

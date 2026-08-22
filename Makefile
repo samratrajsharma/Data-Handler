@@ -3,7 +3,7 @@
 COMPOSE_FILE := infrastructure/docker-compose.yml
 
 up:
-	docker compose -f $(COMPOSE_FILE) up -d --build
+	docker compose -f $(COMPOSE_FILE) up -d
 
 down:
 	docker compose -f $(COMPOSE_FILE) down

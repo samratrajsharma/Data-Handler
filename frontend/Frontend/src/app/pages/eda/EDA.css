@@ -63,9 +63,9 @@
 .eda-boxplot-row__label { width: 120px; font-size: 12px; font-weight: 600; color: var(--dash-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
 .eda-boxplot-row__track { flex: 1; height: 24px; position: relative; background: var(--dash-surface-hover); border-radius: 4px; }
 .eda-boxplot-row__range { font-size: 11px; color: var(--dash-text-muted); width: 100px; text-align: right; flex-shrink: 0; }
-.eda-boxplot__whisker { position: absolute; top: 50%; height: 2px; background: #94a3b8; transform: translateY(-50%); }
-.eda-boxplot__box { position: absolute; top: 3px; bottom: 3px; background: rgba(29, 185, 84, 0.08); border: 1px solid #1ED760; border-radius: 3px; }
-.eda-boxplot__median { position: absolute; top: 2px; bottom: 2px; width: 2px; background: #1ED760; transform: translateX(-50%); }
+.eda-boxplot__whisker { position: absolute; top: 50%; height: 2px; background: var(--tint); transform: translateY(-50%); }
+.eda-boxplot__box { position: absolute; top: 3px; bottom: 3px; background: var(--tint); border: 1px solid var(--dash-border-strong); border-radius: 3px; }
+.eda-boxplot__median { position: absolute; top: 2px; bottom: 2px; width: 2px; background: var(--tint); transform: translateX(-50%); }
 
 /* ── Column Cards ── */
 .eda-columns-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
@@ -96,15 +96,15 @@
 
 /* ── Warnings ── */
 .eda-warnings { display: flex; flex-direction: column; gap: 6px; }
-.eda-warning-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 12px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.15); border-radius: 8px; font-size: 13px; color: var(--dash-text-secondary); }
-.eda-warning-icon { color: #f59e0b; font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.eda-warning-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 12px; background: var(--tint); border: 1px solid var(--dash-border-strong); border-radius: 8px; font-size: 13px; color: var(--dash-text-secondary); }
+.eda-warning-icon { color: var(--dash-primary); font-size: 14px; flex-shrink: 0; margin-top: 1px; }
 
 /* ── Raw JSON ── */
 .eda-json { font-size: 12px; color: var(--dash-text-secondary); overflow: auto; max-height: 400px; white-space: pre-wrap; background: var(--dash-surface-hover); padding: 12px; border-radius: 8px; border: 1px solid var(--dash-border); }
 
 /* ── Badges ── */
 .badge--sm { font-size: 10px; padding: 2px 8px; }
-.badge--secondary { background: rgba(107, 114, 128, 0.1); color: #a7a7a7; }
+.badge--secondary { background: var(--tint); color: var(--dash-text-secondary); }
 
 @media (max-width: 768px) {
   .eda-summary { grid-template-columns: repeat(2, 1fr); }

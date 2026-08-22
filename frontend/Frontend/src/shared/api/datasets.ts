@@ -3,7 +3,7 @@ import api from "./client";
 export interface DatasetCreatePayload {
   name: string;
   description?: string;
-  source_type: "csv" | "json" | "api" | "database" | "image";
+  source_type: "csv" | "json" | "api" | "database" | "image" | "text";
 }
 
 export const datasetApi = {
@@ -44,5 +44,6 @@ export function inferSourceTypeFromFile(file: File): DatasetCreatePayload["sourc
   const name = file.name.toLowerCase();
   if (name.endsWith(".json") || name.endsWith(".jsonl")) return "json";
   if (name.match(/\.(png|jpe?g|webp|tiff?|bmp)$/)) return "image";
+  if (name.endsWith(".txt") || name.endsWith(".md")) return "text";
   return "csv";
 }

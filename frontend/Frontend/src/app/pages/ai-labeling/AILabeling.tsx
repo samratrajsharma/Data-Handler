@@ -34,7 +34,12 @@ const TAB_META: Record<Tab, { label: string; desc: string }> = {
   },
 };
 
-const confColor = (c: number) => (c >= 0.75 ? "#1DB954" : c >= 0.5 ? "#f59e0b" : "#ef4444");
+// Only the core "Predict" flow is surfaced. The advanced tabs (propagate,
+// aggregate, synthetic, active) stay implemented but hidden from the UI until
+// they're needed — add them back to VISIBLE_TABS to restore.
+const VISIBLE_TABS: Tab[] = ["predict"];
+
+const confColor = (c: number) => (c >= 0.75 ? "var(--dash-text)" : c >= 0.5 ? "var(--dash-text-secondary)" : "var(--dash-text-muted)");
 
 export default function AILabeling() {
   const [datasets, setDatasets] = useState<Array<{id:string; name:string}>>([]);
@@ -80,7 +85,7 @@ export default function AILabeling() {
 
   useEffect(() => {
     datasetApi.list({ limit: 100 }).then((r) => {
-      setDatasets((Array.isArray(r.data) ? r.data : r.data.datasets || []).filter((d: {source_type?: string}) => d.source_type !== "image"));
+      setDatasets((Array.isArray(r.data) ? r.data : r.data.datasets || []).filter((d: {source_type?: string}) => d.source_type !== "image" && d.source_type !== "text"));
     }).catch(() => {});
     llmApi.getProviders().then((r) => setProviders(r.data.providers || [])).catch(() => {});
   }, []);
@@ -660,16 +665,18 @@ export default function AILabeling() {
     <div>
       <div className="page-header">
         <h1>AI-Powered Labeling</h1>
-        <p>Let an LLM label your data — predict, propagate, aggregate, and more</p>
+        <p>Use an LLM to classify each row of your text data into your labels</p>
       </div>
 
-      <div className="tabs">
-        {(Object.keys(TAB_META) as Tab[]).map((t) => (
-          <button key={t} className={`tab ${tab === t ? "tab--active" : ""}`} onClick={() => setTab(t)}>
-            {TAB_META[t].label}
-          </button>
-        ))}
-      </div>
+      {VISIBLE_TABS.length > 1 && (
+        <div className="tabs">
+          {VISIBLE_TABS.map((t) => (
+            <button key={t} className={`tab ${tab === t ? "tab--active" : ""}`} onClick={() => setTab(t)}>
+              {TAB_META[t].label}
+            </button>
+          ))}
+        </div>
+      )}
       <p className="ail-tab-desc">{TAB_META[tab].desc}</p>
 
       <div className="two-col">

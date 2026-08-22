@@ -90,12 +90,12 @@ function HoverLayer({ hover }: { hover: HoverInfo | null }) {
   return (
     <g pointerEvents="none">
       <line x1={x} y1={PLOT.T} x2={x} y2={PLOT.T + PH}
-        stroke="#1ED760" strokeWidth="1" strokeDasharray="3 3" opacity="0.55"/>
+        stroke="var(--dash-text)" strokeWidth="1" strokeDasharray="3 3" opacity="0.55"/>
       <line x1={PLOT.L} y1={y} x2={PLOT.L + PW} y2={y}
-        stroke="#1ED760" strokeWidth="1" strokeDasharray="3 3" opacity="0.55"/>
+        stroke="var(--dash-text)" strokeWidth="1" strokeDasharray="3 3" opacity="0.55"/>
       {hover.pointX !== undefined && hover.pointY !== undefined && (
         <circle cx={hover.pointX} cy={hover.pointY} r="5.5"
-          fill="#fff" stroke="#1ED760" strokeWidth="2.5"/>
+          fill="var(--dash-surface)" stroke="var(--dash-text)" strokeWidth="2.5"/>
       )}
     </g>
   );
@@ -124,7 +124,7 @@ function HoverTooltip({ hover, svgRect, containerRect }: {
       top: containerY + 14,
       transform: flipLeft ? "translateX(-100%)" : undefined,
       pointerEvents: "none",
-      background: "#fff",
+      background: "var(--dash-surface)",
       border: "1px solid var(--dash-border)",
       borderRadius: 8,
       padding: "6px 10px",
@@ -186,18 +186,18 @@ function BarChart({ values, label, hover, onHover, svgRef }: {
       xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="barGrad" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="#1ED760"/>
-          <stop offset="1" stopColor="#1DB954"/>
+          <stop offset="0" stopColor="var(--accent)"/>
+          <stop offset="1" stopColor="var(--accent)"/>
         </linearGradient>
       </defs>
-      <line x1={PLOT.L} y1={PLOT.T + PH} x2={PLOT.L + PW} y2={PLOT.T + PH} stroke="#2a2a2a"/>
-      <line x1={PLOT.L} y1={PLOT.T} x2={PLOT.L} y2={PLOT.T + PH} stroke="#2a2a2a"/>
+      <line x1={PLOT.L} y1={PLOT.T + PH} x2={PLOT.L + PW} y2={PLOT.T + PH} stroke="var(--dash-border)"/>
+      <line x1={PLOT.L} y1={PLOT.T} x2={PLOT.L} y2={PLOT.T + PH} stroke="var(--dash-border)"/>
       {niceTicks(0, max, 4).map((t, i) => {
         const y = PLOT.T + PH - (t / max) * PH;
         return (
           <g key={i}>
-            <line x1={PLOT.L} y1={y} x2={PLOT.L + PW} y2={y} stroke="#4ADE80"/>
-            <text x={PLOT.L - 6} y={y + 4} fontSize="10.5" fill="#6f6f6f" textAnchor="end">{Math.round(t)}</text>
+            <line x1={PLOT.L} y1={y} x2={PLOT.L + PW} y2={y} stroke="var(--dash-border)"/>
+            <text x={PLOT.L - 6} y={y + 4} fontSize="10.5" fill="var(--dash-text-muted)" textAnchor="end">{Math.round(t)}</text>
           </g>
         );
       })}
@@ -210,15 +210,15 @@ function BarChart({ values, label, hover, onHover, svgRef }: {
           <g key={k}>
             <rect x={x} y={y} width={w} height={h} rx="3" fill="url(#barGrad)"/>
             <text x={x + w / 2} y={PLOT.T + PH + 14}
-              fontSize="10.5" fill="#a7a7a7" textAnchor="middle">
+              fontSize="10.5" fill="var(--dash-text-secondary)" textAnchor="middle">
               {k.length > 10 ? k.slice(0, 9) + "…" : k}
             </text>
             <text x={x + w / 2} y={y - 4}
-              fontSize="10" fill="#4b4b58" textAnchor="middle" fontWeight={600}>{c}</text>
+              fontSize="10" fill="var(--dash-text-muted)" textAnchor="middle" fontWeight={600}>{c}</text>
           </g>
         );
       })}
-      <text x={PLOT.L + PW / 2} y={PLOT.H - 8} fontSize="11" fill="#a7a7a7" textAnchor="middle">{label}</text>
+      <text x={PLOT.L + PW / 2} y={PLOT.H - 8} fontSize="11" fill="var(--dash-text-secondary)" textAnchor="middle">{label}</text>
       <HoverLayer hover={hover}/>
     </svg>
   );
@@ -269,18 +269,18 @@ function Histogram({ values, label, hover, onHover, svgRef }: {
       xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="histGrad" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="#4ade80"/>
-          <stop offset="1" stopColor="#1ED760"/>
+          <stop offset="0" stopColor="var(--accent)"/>
+          <stop offset="1" stopColor="var(--accent)"/>
         </linearGradient>
       </defs>
-      <line x1={PLOT.L} y1={PLOT.T + PH} x2={PLOT.L + PW} y2={PLOT.T + PH} stroke="#2a2a2a"/>
-      <line x1={PLOT.L} y1={PLOT.T} x2={PLOT.L} y2={PLOT.T + PH} stroke="#2a2a2a"/>
+      <line x1={PLOT.L} y1={PLOT.T + PH} x2={PLOT.L + PW} y2={PLOT.T + PH} stroke="var(--dash-border)"/>
+      <line x1={PLOT.L} y1={PLOT.T} x2={PLOT.L} y2={PLOT.T + PH} stroke="var(--dash-border)"/>
       {niceTicks(0, cmax, 4).map((t, i) => {
         const y = PLOT.T + PH - (t / cmax) * PH;
         return (
           <g key={i}>
-            <line x1={PLOT.L} y1={y} x2={PLOT.L + PW} y2={y} stroke="#4ADE80"/>
-            <text x={PLOT.L - 6} y={y + 4} fontSize="10.5" fill="#6f6f6f" textAnchor="end">{Math.round(t)}</text>
+            <line x1={PLOT.L} y1={y} x2={PLOT.L + PW} y2={y} stroke="var(--dash-border)"/>
+            <text x={PLOT.L - 6} y={y + 4} fontSize="10.5" fill="var(--dash-text-muted)" textAnchor="end">{Math.round(t)}</text>
           </g>
         );
       })}
@@ -294,10 +294,10 @@ function Histogram({ values, label, hover, onHover, svgRef }: {
         const v = min + ((i + 0.5) / bins) * range;
         return (
           <text key={i} x={PLOT.L + (i + 0.5) * bw} y={PLOT.T + PH + 14}
-            fontSize="10.5" fill="#a7a7a7" textAnchor="middle">{fmtNum(v)}</text>
+            fontSize="10.5" fill="var(--dash-text-secondary)" textAnchor="middle">{fmtNum(v)}</text>
         );
       })}
-      <text x={PLOT.L + PW / 2} y={PLOT.H - 8} fontSize="11" fill="#a7a7a7" textAnchor="middle">{label}</text>
+      <text x={PLOT.L + PW / 2} y={PLOT.H - 8} fontSize="11" fill="var(--dash-text-secondary)" textAnchor="middle">{label}</text>
       <HoverLayer hover={hover}/>
     </svg>
   );
@@ -308,25 +308,25 @@ function ChartAxes({ xMin, xMax, yMin, yMax, xl, yl }: {
 }) {
   return (
     <>
-      <line x1={PLOT.L} y1={PLOT.T + PH} x2={PLOT.L + PW} y2={PLOT.T + PH} stroke="#2a2a2a"/>
-      <line x1={PLOT.L} y1={PLOT.T} x2={PLOT.L} y2={PLOT.T + PH} stroke="#2a2a2a"/>
+      <line x1={PLOT.L} y1={PLOT.T + PH} x2={PLOT.L + PW} y2={PLOT.T + PH} stroke="var(--dash-border)"/>
+      <line x1={PLOT.L} y1={PLOT.T} x2={PLOT.L} y2={PLOT.T + PH} stroke="var(--dash-border)"/>
       {niceTicks(yMin, yMax, 5).map((t, i) => {
         const y = PLOT.T + PH - ((t - yMin) / (yMax - yMin || 1)) * PH;
         return (
           <g key={"y" + i}>
-            <line x1={PLOT.L} y1={y} x2={PLOT.L + PW} y2={y} stroke="#4ADE80"/>
-            <text x={PLOT.L - 6} y={y + 4} fontSize="10.5" fill="#6f6f6f" textAnchor="end">{fmtNum(t)}</text>
+            <line x1={PLOT.L} y1={y} x2={PLOT.L + PW} y2={y} stroke="var(--dash-border)"/>
+            <text x={PLOT.L - 6} y={y + 4} fontSize="10.5" fill="var(--dash-text-muted)" textAnchor="end">{fmtNum(t)}</text>
           </g>
         );
       })}
       {niceTicks(xMin, xMax, 5).map((t, i) => {
         const x = PLOT.L + ((t - xMin) / (xMax - xMin || 1)) * PW;
         return (
-          <text key={"x" + i} x={x} y={PLOT.T + PH + 14} fontSize="10.5" fill="#6f6f6f" textAnchor="middle">{fmtNum(t)}</text>
+          <text key={"x" + i} x={x} y={PLOT.T + PH + 14} fontSize="10.5" fill="var(--dash-text-muted)" textAnchor="middle">{fmtNum(t)}</text>
         );
       })}
-      <text x={PLOT.L + PW / 2} y={PLOT.H - 8} fontSize="11" fill="#a7a7a7" textAnchor="middle">{xl}</text>
-      <text x={14} y={PLOT.T + PH / 2} fontSize="11" fill="#a7a7a7" textAnchor="middle"
+      <text x={PLOT.L + PW / 2} y={PLOT.H - 8} fontSize="11" fill="var(--dash-text-secondary)" textAnchor="middle">{xl}</text>
+      <text x={14} y={PLOT.T + PH / 2} fontSize="11" fill="var(--dash-text-secondary)" textAnchor="middle"
         transform={`rotate(-90, 14, ${PLOT.T + PH / 2})`}>{yl}</text>
     </>
   );
@@ -380,7 +380,7 @@ function Scatter({ xs, ys, xl, yl, hover, onHover, svgRef }: {
       xmlns="http://www.w3.org/2000/svg">
       <ChartAxes xMin={xMin} xMax={xMax} yMin={yMin} yMax={yMax} xl={xl} yl={yl}/>
       {pts.map((p, i) => (
-        <circle key={i} cx={sx(p[0])} cy={sy(p[1])} r="3" fill="#1ED760" opacity="0.75"/>
+        <circle key={i} cx={sx(p[0])} cy={sy(p[1])} r="3" fill="var(--accent)" opacity="0.75"/>
       ))}
       <HoverLayer hover={hover}/>
     </svg>
@@ -430,9 +430,9 @@ function LineChart({ xs, ys, xl, yl, hover, onHover, svgRef }: {
       onMouseMove={handleMove} onMouseLeave={() => onHover(null)}
       xmlns="http://www.w3.org/2000/svg">
       <ChartAxes xMin={xMin} xMax={xMax} yMin={yMin} yMax={yMax} xl={xl} yl={yl}/>
-      <path d={d} stroke="#1ED760" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d={d} stroke="var(--accent)" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
       {pts.map((p, i) => (
-        <circle key={i} cx={sx(p[0])} cy={sy(p[1])} r="2.5" fill="#1DB954"/>
+        <circle key={i} cx={sx(p[0])} cy={sy(p[1])} r="2.5" fill="var(--accent)"/>
       ))}
       <HoverLayer hover={hover}/>
     </svg>
@@ -567,7 +567,7 @@ export default function EDAGraphs({ datasetId }: Props) {
 
   let chart: React.ReactNode = null;
   if (loading) chart = <div className="g-empty">Loading…</div>;
-  else if (error) chart = <div className="g-empty" style={{color: "#dc2626"}}>{error}</div>;
+  else if (error) chart = <div className="g-empty" style={{color: "var(--dash-text-muted)"}}>{error}</div>;
   else if (!xSelected) chart = <div className="g-empty">Pick a column to start.</div>;
   else if (needsY && !ySelected) chart = <div className="g-empty">Pick a second column for the {chartType}.</div>;
   else if (xValues.length === 0) chart = <div className="g-empty">No data available.</div>;
@@ -587,7 +587,7 @@ export default function EDAGraphs({ datasetId }: Props) {
               style={{
                 padding: "9px 16px", borderRadius: 100,
                 border: `1px solid ${chartType === t.key ? "var(--brand-indigo)" : "var(--dash-border)"}`,
-                background: chartType === t.key ? "var(--dash-primary-dim)" : "#fff",
+                background: chartType === t.key ? "var(--dash-primary-dim)" : "var(--dash-surface)",
                 color: chartType === t.key ? "var(--dash-primary)" : "var(--dash-text-secondary)",
                 fontSize: 13, fontWeight: 600, cursor: "pointer",
                 fontFamily: "inherit",
@@ -658,7 +658,7 @@ export default function EDAGraphs({ datasetId }: Props) {
 
       {/* Chart frame */}
       <div ref={containerRef} className="g-frame" style={{
-        background: "#fff", border: "1px solid var(--dash-border)", borderRadius: 14,
+        background: "var(--dash-surface)", border: "1px solid var(--dash-border)", borderRadius: 14,
         padding: 16, minHeight: 360, position: "relative",
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>

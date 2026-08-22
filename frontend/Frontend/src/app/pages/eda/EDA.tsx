@@ -22,7 +22,7 @@ interface ProfileData {
 
 /* ── Mini chart components (no library needed) ── */
 
-function BarChart({ data, color = "#1ED760" }: { data: { label: string; value: number }[]; color?: string }) {
+function BarChart({ data, color = "var(--dash-text)" }: { data: { label: string; value: number }[]; color?: string }) {
   const max = Math.max(...data.map(d => d.value), 1);
   return (
     <div className="eda-bar-chart">
@@ -45,7 +45,7 @@ function NullBarChart({ columns }: { columns: ColumnProfile[] }) {
   return (
     <BarChart
       data={sorted.slice(0, 15).map(c => ({ label: c.name, value: Math.round(c.null_pct * 10) / 10 }))}
-      color="#ef4444"
+      color="var(--dash-text-muted)"
     />
   );
 }
@@ -64,11 +64,11 @@ function CorrelationMatrix({ correlations }: { correlations: Record<string, Reco
 
 function CorrelationMatrixInner({ cols, correlations }: { cols: string[]; correlations: Record<string, Record<string, number>> }) {
   const getColor = (v: number) => {
-    if (v >= 0.7) return "#22c55e";
-    if (v >= 0.3) return "#86efac";
-    if (v > -0.3) return "#242424";
-    if (v > -0.7) return "#fca5a5";
-    return "#ef4444";
+    if (v >= 0.7) return "var(--dash-text)";
+    if (v >= 0.3) return "var(--dash-text)";
+    if (v > -0.3) return "var(--dash-surface-active)";
+    if (v > -0.7) return "var(--dash-text-muted)";
+    return "var(--dash-text-muted)";
   };
   return (
     <div className="eda-corr-matrix" style={{ overflowX: "auto" }}>
@@ -131,7 +131,7 @@ function DataTypeChart({ columns }: { columns: ColumnProfile[] }) {
     else counts.other++;
   });
   const items = Object.entries(counts).filter(([, v]) => v > 0);
-  const colors: Record<string, string> = { numeric: "#1ED760", categorical: "#1DB954", text: "#f59e0b", other: "#a7a7a7" };
+  const colors: Record<string, string> = { numeric: "var(--dash-text)", categorical: "var(--dash-text)", text: "var(--dash-text-secondary)", other: "var(--dash-text-secondary)" };
   const total = columns.length;
   return (
     <div className="eda-dtype-chart">
@@ -191,7 +191,7 @@ function ColumnCard({ col }: { col: ColumnProfile }) {
         <div style={{marginTop: 8}}>
           <BarChart
             data={Object.entries(s.top_values as Record<string, number>).slice(0, 6).map(([k, v]) => ({ label: k, value: v }))}
-            color={col.is_categorical ? "#1DB954" : "#f59e0b"}
+            color={col.is_categorical ? "var(--dash-text)" : "var(--dash-text-secondary)"}
           />
         </div>
       )}
@@ -219,7 +219,7 @@ export default function EDA() {
 
   useEffect(() => {
     datasetApi.list({ limit: 100 }).then((r) => {
-      setDatasets((Array.isArray(r.data) ? r.data : r.data.datasets || []).filter((d: {source_type?: string}) => d.source_type !== "image"));
+      setDatasets((Array.isArray(r.data) ? r.data : r.data.datasets || []).filter((d: {source_type?: string}) => d.source_type !== "image" && d.source_type !== "text"));
     }).catch(() => {});
     const preselect = searchParams.get("dataset");
     if (preselect) setDatasetId(preselect);
@@ -351,7 +351,7 @@ export default function EDA() {
                       style={{position: "fixed", inset: 0, zIndex: 50}}/>
                     <div role="menu" style={{
                       position: "absolute", top: "calc(100% + 6px)", left: 0,
-                      minWidth: 200, background: "#fff",
+                      minWidth: 200, background: "var(--dash-surface)",
                       border: "1px solid var(--dash-border)", borderRadius: 10,
                       boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
                       padding: 6, zIndex: 60,
@@ -467,7 +467,7 @@ export default function EDA() {
                         ).sort((a, b) => Math.abs(b.value) - Math.abs(a.value)).slice(0, 10).map((item, i) => (
                           <div key={i} className="eda-top-corrs__row">
                             <span>{item.pair}</span>
-                            <span style={{ color: item.value > 0.5 ? "#22c55e" : item.value < -0.5 ? "#ef4444" : "var(--dash-text-muted)", fontWeight: 600 }}>
+                            <span style={{ color: item.value > 0.5 ? "var(--dash-text)" : item.value < -0.5 ? "var(--dash-text-muted)" : "var(--dash-text-muted)", fontWeight: 600 }}>
                               {item.value.toFixed(4)}
                             </span>
                           </div>

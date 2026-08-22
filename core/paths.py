@@ -1,5 +1,5 @@
 """
-Central path constants and sys.path setup for the Orchestraty project.
+Central path constants and sys.path setup for the Data Handler project.
 
 The ``data-intelligence-system`` directory uses hyphens, which makes it
 an invalid Python package name.  This module adds it (and the project

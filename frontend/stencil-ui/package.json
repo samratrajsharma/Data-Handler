@@ -1,7 +1,7 @@
 {
-  "name": "orchestraty-stencil-ui",
+  "name": "datahandler-stencil-ui",
   "version": "1.0.0",
-  "description": "Orchestraty Stencil Web Component Library",
+  "description": "Data Handler Stencil Web Component Library",
   "main": "dist/index.cjs.js",
   "module": "dist/index.js",
   "types": "dist/types/index.d.ts",

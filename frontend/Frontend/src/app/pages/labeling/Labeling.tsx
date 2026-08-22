@@ -122,7 +122,7 @@ export default function Labeling() {
 
   useEffect(() => {
     datasetApi.list({ limit: 100 }).then((r) => {
-      setDatasets((Array.isArray(r.data) ? r.data : r.data.datasets || []).filter((d: {source_type?: string}) => d.source_type !== "image"));
+      setDatasets((Array.isArray(r.data) ? r.data : r.data.datasets || []).filter((d: {source_type?: string}) => d.source_type !== "image" && d.source_type !== "text"));
     }).catch(() => {});
     labelingApi.getOperators().then((r) => setOperators(r.data.operators || [])).catch(() => {});
     labelingApi.listRuleSets().then((r) => setRuleSets(r.data.rule_sets || [])).catch(() => {});
@@ -500,7 +500,7 @@ export default function Labeling() {
                   value={rule.label}
                   onChange={(e) => updateRuleLabel(i, e.target.value)}
                   style={{flex: 1, maxWidth: 220, padding: "6px 10px", fontSize: 13,
-                    border: `1px solid ${rule.label ? "#1ED760" : "var(--dash-border)"}`,
+                    border: `1px solid ${rule.label ? "var(--dash-text)" : "var(--dash-border)"}`,
                     borderRadius: 8, fontWeight: 600}}
                 />
               </div>
@@ -693,7 +693,7 @@ export default function Labeling() {
         {previewError && (
           <div style={{
             marginTop: 12, padding: "10px 12px",
-            background: "rgba(239,68,68,0.08)", color: "#b91c1c",
+            background: "rgba(239,68,68,0.08)", color: "var(--dash-text-muted)",
             border: "1px solid rgba(239,68,68,0.25)", borderRadius: 8, fontSize: 12.5,
           }}>{previewError}</div>
         )}
@@ -718,7 +718,7 @@ export default function Labeling() {
             <div style={{display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 12}}>
               <div style={{background: "#fff", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--dash-border)"}}>
                 <div style={{fontSize: 11.5, color: "var(--dash-text-muted)"}}>Would label</div>
-                <div style={{fontSize: 18, fontWeight: 700, color: "#16a34a"}}>{preview.report.labeled_count}</div>
+                <div style={{fontSize: 18, fontWeight: 700, color: "var(--dash-text)"}}>{preview.report.labeled_count}</div>
               </div>
               <div style={{background: "#fff", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--dash-border)"}}>
                 <div style={{fontSize: 11.5, color: "var(--dash-text-muted)"}}>Unlabeled</div>
@@ -726,7 +726,7 @@ export default function Labeling() {
               </div>
               <div style={{background: "#fff", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--dash-border)"}}>
                 <div style={{fontSize: 11.5, color: "var(--dash-text-muted)"}}>Conflicts</div>
-                <div style={{fontSize: 18, fontWeight: 700, color: preview.report.conflict_count > 0 ? "#ef4444" : "var(--dash-text)"}}>
+                <div style={{fontSize: 18, fontWeight: 700, color: preview.report.conflict_count > 0 ? "var(--dash-text-muted)" : "var(--dash-text)"}}>
                   {preview.report.conflict_count}
                 </div>
               </div>
@@ -751,7 +751,7 @@ export default function Labeling() {
                           {ruleSummary(rule)}
                         </span>
                       </span>
-                      <span style={{fontSize: 12.5, color: stat.matches === 0 ? "#dc2626" : "#16a34a", fontWeight: 700}}>
+                      <span style={{fontSize: 12.5, color: stat.matches === 0 ? "var(--dash-text-muted)" : "var(--dash-text)", fontWeight: 700}}>
                         {stat.matches} match{stat.matches === 1 ? "" : "es"} ({pct}%)
                       </span>
                     </div>
@@ -844,7 +844,7 @@ export default function Labeling() {
                 <div className="label-coverage__track">
                   <div className="label-coverage__fill" style={{
                     width: `${coveragePct}%`,
-                    background: coveragePct > 80 ? "#22c55e" : coveragePct > 50 ? "#f59e0b" : "#ef4444"
+                    background: coveragePct > 80 ? "var(--dash-text)" : coveragePct > 50 ? "var(--dash-text-secondary)" : "var(--dash-text-muted)"
                   }} />
                 </div>
               </div>
@@ -895,7 +895,7 @@ export default function Labeling() {
                       <td>{((rs.matches / Math.max(report.total_rows, 1)) * 100).toFixed(1)}%</td>
                       <td style={{width: 200}}>
                         <div style={{height: 16, background: "var(--dash-surface-hover)", borderRadius: 4, overflow: "hidden"}}>
-                          <div style={{height: "100%", width: `${(rs.matches / Math.max(report.total_rows, 1)) * 100}%`, background: "#1ED760", borderRadius: 4}} />
+                          <div style={{height: "100%", width: `${(rs.matches / Math.max(report.total_rows, 1)) * 100}%`, background: "var(--dash-text)", borderRadius: 4}} />
                         </div>
                       </td>
                     </tr>

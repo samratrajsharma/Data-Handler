@@ -25,7 +25,7 @@ from typing import Optional
 # value remains exposed so audit-style "who did it" logging can still be
 # done locally if a route wants to.
 LOCAL_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
-LOCAL_USER_EMAIL = "local@orchestraty.local"
+LOCAL_USER_EMAIL = "local@datahandler.local"
 
 
 @dataclass(frozen=True)

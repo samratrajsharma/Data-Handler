@@ -8,7 +8,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Optional
 
-from PIL import Image, ExifTags, UnidentifiedImageError
+from PIL import Image, ExifTags, ImageOps, UnidentifiedImageError
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,20 @@ def extract_metadata(image_bytes: bytes) -> ImageMetadata:
                     exif_data[tag_name] = str(value)
     except Exception as exc:
         logger.debug("EXIF extraction failed: %s", exc)
+
+    # Apply EXIF orientation BEFORE reading width/height so the stored
+    # dimensions match how the image is actually displayed (thumbnails are
+    # already transposed). Portrait phone photos use EXIF orientation 5-8,
+    # which swap width/height; without this the stored W/H would be transposed
+    # relative to the pixels, and exported bounding boxes would be wrong.
+    # exif_transpose returns the image unchanged when there is no orientation
+    # tag. (EXIF is captured above first, so the raw orientation is preserved.)
+    try:
+        transposed = ImageOps.exif_transpose(img)
+        if transposed is not None:
+            img = transposed
+    except Exception as exc:
+        logger.debug("exif_transpose failed, using original orientation: %s", exc)
 
     # Channel count
     mode_channels = {

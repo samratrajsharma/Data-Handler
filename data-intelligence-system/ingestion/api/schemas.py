@@ -22,7 +22,7 @@ class DatasetCreate(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
-    source_type: str = Field(..., pattern="^(csv|json|api|database|image)$")
+    source_type: str = Field(..., pattern="^(csv|json|api|database|image|text)$")
 
 
 class DatasetResponse(BaseModel):

@@ -7,6 +7,7 @@ import io
 import json
 import logging
 import math
+import re
 
 import core.paths  # noqa: F401
 
@@ -224,6 +225,67 @@ def _load_dataset_file(dataset_id: str, version_number: int) -> pd.DataFrame:
         return _read_csv_tolerant(raw_bytes, sep=delim, encoding=encoding, skiprows=skip)
 
 
+def _count_data_lines(raw_bytes: bytes, encoding: str, skiprows: int = 0) -> int | None:
+    """Best-effort count of *data* rows in a delimited file.
+
+    Counts non-empty physical lines, then subtracts the prelude rows we skip
+    and the single header row. Used only to estimate how many rows a tolerant
+    parse dropped, so it never raises (returns ``None`` on failure). It can
+    over-count when a file legitimately contains quoted newlines, so callers
+    should only trust it on the tolerant path (which already implies the file
+    is malformed).
+    """
+    try:
+        text = raw_bytes.decode(encoding, errors="replace")
+    except Exception:  # noqa: BLE001
+        return None
+    non_empty = sum(1 for ln in text.splitlines() if ln.strip())
+    # minus the skipped prelude, minus the header row
+    return max(0, non_empty - max(0, skiprows) - 1)
+
+
+_LEADING_ZERO_RE = re.compile(r"^0\d")
+
+
+def _preserve_leading_zeros(
+    df: pd.DataFrame, raw_bytes: bytes, sep: str, encoding: str, skiprows: int = 0
+) -> pd.DataFrame:
+    """Keep zero-padded identifier columns (zip / SKU / account codes) as text.
+
+    pandas type-inference reads ``"007"`` as the integer ``7``, silently dropping
+    the leading zeros. To preserve fidelity we detect — on a small sample — which
+    of the *integer* columns actually contain zero-padded values, and re-read only
+    those columns as strings. Every genuinely-numeric column is left untouched, so
+    downstream numeric operations (EDA, outliers, comparisons) are unaffected. The
+    whole thing is best-effort and never breaks an otherwise-successful load.
+    """
+    try:
+        int_cols = [c for c in df.columns if pd.api.types.is_integer_dtype(df[c])]
+        if not int_cols:
+            return df
+        sample = pd.read_csv(
+            io.BytesIO(raw_bytes), sep=sep, encoding=encoding, skiprows=skiprows,
+            usecols=int_cols, dtype=str, nrows=500, low_memory=False,
+        )
+        padded = [
+            c for c in int_cols
+            if c in sample.columns
+            and sample[c].dropna().astype(str).str.match(_LEADING_ZERO_RE).any()
+        ]
+        if not padded:
+            return df
+        full = pd.read_csv(
+            io.BytesIO(raw_bytes), sep=sep, encoding=encoding, skiprows=skiprows,
+            usecols=padded, dtype=str, low_memory=False,
+        )
+        for c in padded:
+            if c in full.columns and len(full[c]) == len(df):
+                df[c] = full[c].values
+    except Exception:  # noqa: BLE001
+        return df
+    return df
+
+
 def _read_csv_tolerant(raw_bytes: bytes, sep: str, encoding: str, skiprows: int = 0) -> pd.DataFrame:
     """Read a CSV with graceful degradation.
 
@@ -235,22 +297,48 @@ def _read_csv_tolerant(raw_bytes: bytes, sep: str, encoding: str, skiprows: int 
 
     If even the tolerant pass fails, raises a friendlier RuntimeError
     that names the problem and points at the offending line.
+
+    FIX: ``on_bad_lines='skip'`` silently discards malformed rows, so we now
+    record how many rows were dropped and the pre-parse data-line count on the
+    returned frame's ``.attrs`` (``skipped_rows`` / ``preparse_rows``). The
+    pipeline surfaces these so users see "N rows skipped" instead of quietly
+    losing data.
     """
-    # Pass 1: strict, fast C engine.
+    # Pass 1: strict, fast C engine. Nothing is skipped on this path.
     try:
-        return pd.read_csv(
+        df = pd.read_csv(
             io.BytesIO(raw_bytes), sep=sep, encoding=encoding,
             skiprows=skiprows, low_memory=False,
         )
+        df.attrs["skipped_rows"] = 0
+        df.attrs["preparse_rows"] = len(df)
+        return _preserve_leading_zeros(df, raw_bytes, sep, encoding, skiprows)
     except Exception as exc:  # noqa: BLE001
         first_error = str(exc)
 
     # Pass 2: tolerant Python engine — skips ragged rows.
     try:
-        return pd.read_csv(
+        df = pd.read_csv(
             io.BytesIO(raw_bytes), sep=sep, encoding=encoding,
             skiprows=skiprows, engine="python", on_bad_lines="skip",
         )
+        # Estimate how many rows the tolerant reader dropped so the pipeline
+        # can report it. Best-effort only — never let the accounting crash the
+        # actual (successful) load.
+        try:
+            preparse = _count_data_lines(raw_bytes, encoding, skiprows)
+            skipped = max(0, preparse - len(df)) if preparse is not None else 0
+        except Exception:  # noqa: BLE001
+            preparse, skipped = None, 0
+        df.attrs["skipped_rows"] = skipped
+        df.attrs["preparse_rows"] = preparse if preparse is not None else len(df)
+        if skipped:
+            logger.warning(
+                "Tolerant CSV parse skipped %d malformed row(s) "
+                "(%s data lines detected, %d parsed).",
+                skipped, preparse, len(df),
+            )
+        return _preserve_leading_zeros(df, raw_bytes, sep, encoding, skiprows)
     except Exception as exc:  # noqa: BLE001
         # Re-raise with a message that points the user at the actual issue
         # rather than the cryptic C tokenizer error.
@@ -332,6 +420,11 @@ def run_structuring_pipeline(
         logger.info("Loaded dataset %s v%d: %d rows, %d columns",
                      dataset_id, version_number, len(df), len(df.columns))
 
+        # FIX: the tolerant CSV reader may have silently dropped malformed rows.
+        # Capture the count now (before the pipeline mutates the frame) so we
+        # can surface it and reconcile the reported original row count.
+        skipped_rows = int(df.attrs.get("skipped_rows", 0) or 0)
+
         # ── Step 2: Schema detection ─────────────────────────────────────
         update_task_progress(db, celery_task_id, 0.3, "Detecting column types...")
 
@@ -386,12 +479,27 @@ def run_structuring_pipeline(
         db.commit()
 
         # ── Done ─────────────────────────────────────────────────────────
+        # Fold any silently-skipped malformed rows into the cleaning report so
+        # they are visible to the user, and set original_rows from the pre-parse
+        # line count (parsed rows + skipped) so the accounting reconciles:
+        #   original_rows == final_rows + rows_removed + skipped_rows
+        cleaning_dict = cleaning_report.to_dict()
+        cleaning_dict["skipped_rows"] = skipped_rows
+        if skipped_rows:
+            warnings = cleaning_dict.get("warnings") or []
+            warnings.append(
+                f"{skipped_rows} malformed row(s) were skipped while parsing the "
+                f"source file and are not present in the cleaned output."
+            )
+            cleaning_dict["warnings"] = warnings
+
         result = _json_safe({
             "schema": schema.to_dict(),
-            "cleaning": cleaning_report.to_dict(),
+            "cleaning": cleaning_dict,
             "quality": quality_report.to_dict(),
             "cleaned_file_path": cleaned_path,
-            "original_rows": schema.row_count,
+            "original_rows": schema.row_count + skipped_rows,
+            "skipped_rows": skipped_rows,
             "final_rows": cleaning_report.final_rows,
         })
 

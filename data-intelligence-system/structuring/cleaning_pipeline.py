@@ -19,6 +19,12 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+# Maximum number of distinct values a column may have before one-hot encoding
+# is skipped. One-hot encoding a high-cardinality column (user_id, email, free
+# text, etc.) explodes the frame into thousands of boolean columns and can
+# exhaust memory / OOM the worker. See :func:`encode_categorical`.
+MAX_ONEHOT_CARDINALITY = 50
+
 
 @dataclass
 class CleaningStep:
@@ -72,7 +78,25 @@ def handle_nulls(
     affected_cols = [c for c in df.columns if df[c].isna().any()]
 
     if strategy == "drop_rows":
-        df = df.dropna().reset_index(drop=True)
+        # FIX: A plain df.dropna() removes any row that has >=1 null across ALL
+        # columns. If even one column is wholly null, EVERY row contains a null
+        # in that column and the entire dataset gets deleted. Restrict the drop
+        # to the subset of columns that actually have at least one real value so
+        # a single all-null column can no longer nuke every row.
+        subset = [c for c in df.columns if df[c].notna().any()]
+        if subset:
+            df = df.dropna(subset=subset).reset_index(drop=True)
+        # else: every column is wholly null — there is nothing sensible to drop
+        # on, so leave the frame untouched rather than emptying it.
+        # Guard: never silently hand back an empty frame when we started with
+        # rows. That almost always signals a misconfigured drop and the user
+        # should pick a fill strategy instead.
+        if before > 0 and len(df) == 0:
+            raise ValueError(
+                "drop_rows would delete every row in the dataset (each row still "
+                "has a null in one of the retained columns). Use a fill strategy "
+                "(fill_mean / fill_median / fill_mode / fill_empty) instead."
+            )
     elif strategy == "fill_mean":
         for col in df.select_dtypes(include=[np.number]).columns:
             df[col] = df[col].fillna(df[col].mean())
@@ -134,32 +158,91 @@ def remove_outliers(
     df: pd.DataFrame,
     iqr_multiplier: float = 1.5,
 ) -> tuple[pd.DataFrame, CleaningStep]:
-    """Remove rows with numeric outliers using IQR method."""
+    """Remove rows with numeric outliers using IQR method.
+
+    FIX: The naive IQR filter is catastrophic on columns where the IQR is zero
+    or where one value dominates — binary flags, label-encoded indicators and
+    zero-inflated columns all have ``q1 == q3`` (IQR == 0), which makes the
+    bounds collapse to a single point so every non-modal row is flagged as an
+    outlier and deleted. We now:
+
+      * skip columns whose IQR is 0 (constant / near-constant),
+      * skip columns whose modal value is >50% of the non-null values
+        (zero-inflated / heavily skewed),
+      * skip boolean-like / 0-1 columns (binary flags, one-hot, label flags),
+      * and abort the whole step (deleting nothing) if the combined mask would
+        remove more than 10% of all rows — mass deletion is far more likely a
+        bug than a genuine cleanup.
+
+    Per-column removal counts are recorded in the step description.
+    """
     before = len(df)
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     mask = pd.Series([True] * len(df), index=df.index)
+    per_col_removed: dict[str, int] = {}
+    skipped: list[str] = []
 
     for col in numeric_cols:
-        q1 = df[col].quantile(0.25)
-        q3 = df[col].quantile(0.75)
+        series = df[col]
+        non_null = series.dropna()
+        if non_null.empty:
+            skipped.append(f"{col}(all-null)")
+            continue
+        # Skip boolean-like / 0-1 columns (binary flags, label-encoded, one-hot).
+        unique_vals = set(pd.unique(non_null))
+        if series.dtype == bool or unique_vals.issubset({0, 1}):
+            skipped.append(f"{col}(binary)")
+            continue
+        q1 = series.quantile(0.25)
+        q3 = series.quantile(0.75)
         iqr = q3 - q1
+        # Constant / near-constant column: bounds collapse to a point.
+        if iqr == 0:
+            skipped.append(f"{col}(iqr=0)")
+            continue
+        # Zero-inflated / heavily skewed: one value dominates the column.
+        modal_share = non_null.value_counts(normalize=True).iloc[0]
+        if modal_share > 0.5:
+            skipped.append(f"{col}(modal={int(round(modal_share * 100))}%)")
+            continue
         lower = q1 - iqr_multiplier * iqr
         upper = q3 + iqr_multiplier * iqr
-        mask &= (df[col] >= lower) & (df[col] <= upper) | df[col].isna()
+        col_mask = (series >= lower) & (series <= upper) | series.isna()
+        removed_here = int((~col_mask).sum())
+        if removed_here:
+            per_col_removed[col] = removed_here
+        mask &= col_mask
 
-    df = df[mask].reset_index(drop=True)
-    after = len(df)
+    would_remove = int((~mask).sum())
+    # Cap: refuse to delete more than 10% of the dataset in a single pass.
+    if before > 0 and would_remove > 0.10 * before:
+        df_out = df.reset_index(drop=True)
+        after = len(df_out)
+        description = (
+            f"IQR outlier removal ABORTED: would have removed {would_remove}/{before} "
+            f"rows (>10% cap) — nothing deleted. Per-column flags: "
+            f"{per_col_removed or 'none'}. Skipped columns: {skipped or 'none'}"
+        )
+        logger.warning(description)
+    else:
+        df_out = df[mask].reset_index(drop=True)
+        after = len(df_out)
+        description = (
+            f"IQR method (multiplier={iqr_multiplier}), removed {before - after} outlier rows. "
+            f"Per-column removals: {per_col_removed or 'none'}. "
+            f"Skipped columns: {skipped or 'none'}"
+        )
 
     step = CleaningStep(
         step="remove_outliers",
-        description=f"IQR method (multiplier={iqr_multiplier}), removed {before - after} outlier rows",
+        description=description,
         rows_before=before,
         rows_after=after,
         rows_affected=before - after,
-        columns_affected=numeric_cols,
+        columns_affected=list(per_col_removed.keys()),
     )
     logger.info("Outliers: %d → %d rows (%d removed)", before, after, before - after)
-    return df, step
+    return df_out, step
 
 
 def drop_columns(df: pd.DataFrame, columns: list[str]) -> tuple[pd.DataFrame, CleaningStep]:
@@ -242,6 +325,7 @@ def encode_categorical(
     """
     applied: list[str] = []
     touched: list[str] = []
+    warnings: list[str] = []
     for spec in (specs or []):
         col = spec.get("column") if isinstance(spec, dict) else None
         mode = spec.get("mode") if isinstance(spec, dict) else None
@@ -250,6 +334,21 @@ def encode_categorical(
         touched.append(col)
         try:
             if mode == "onehot":
+                # FIX: Cap one-hot cardinality. A high-cardinality column
+                # (user_id, email, free text) would explode into thousands of
+                # boolean columns and can OOM the worker. Skip it with an
+                # explicit warning instead of silently swallowing an error or
+                # blowing up memory.
+                distinct = int(df[col].nunique(dropna=True))
+                if distinct > MAX_ONEHOT_CARDINALITY:
+                    msg = (
+                        f"{col} → one-hot SKIPPED: {distinct} distinct values exceed "
+                        f"MAX_ONEHOT_CARDINALITY={MAX_ONEHOT_CARDINALITY} "
+                        f"(would create ~{distinct} columns). Consider label encoding."
+                    )
+                    warnings.append(msg)
+                    logger.warning(msg)
+                    continue
                 df = pd.get_dummies(df, columns=[col], prefix=str(col), dummy_na=False)
                 applied.append(f"{col} → one-hot")
             elif mode == "label":
@@ -259,12 +358,15 @@ def encode_categorical(
         except Exception as exc:  # noqa: BLE001
             logger.warning("Encoding failed for column '%s' (%s): %s", col, mode, exc)
             continue
+    description = (
+        f"Encoded {len(applied)} column(s): {', '.join(applied)}"
+        if applied else "No encoding applied"
+    )
+    if warnings:
+        description += f". Warnings: {'; '.join(warnings)}"
     step = CleaningStep(
         step="encode_categorical",
-        description=(
-            f"Encoded {len(applied)} column(s): {', '.join(applied)}"
-            if applied else "No encoding applied"
-        ),
+        description=description,
         rows_before=len(df), rows_after=len(df), rows_affected=0,
         columns_affected=touched,
     )
@@ -344,8 +446,12 @@ def run_cleaning_pipeline(
         df, step = remove_duplicates(df)
         steps.append(asdict(step))
 
-    # Step 2: Handle nulls
+    # Step 2: Handle nulls (measure before/after so the report can state how
+    # many missing values were actually filled/removed).
+    nulls_before = int(df.isna().sum().sum())
     df, step = handle_nulls(df, strategy=null_strategy)
+    nulls_after = int(df.isna().sum().sum())
+    total_nulls_filled = max(0, nulls_before - nulls_after)
     steps.append(asdict(step))
 
     # Step 3: Normalize text (trim whitespace)
@@ -370,7 +476,7 @@ def run_cleaning_pipeline(
         final_columns=len(df.columns),
         steps=steps,
         total_rows_removed=original_rows - len(df),
-        total_nulls_filled=int(df.isna().sum().sum()),
+        total_nulls_filled=total_nulls_filled,
     )
 
     logger.info(
