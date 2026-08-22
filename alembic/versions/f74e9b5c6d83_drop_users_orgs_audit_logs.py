@@ -1,6 +1,6 @@
 """drop users orgs audit_logs permissions and FK columns
 
-Phase D — single-user pivot. Drops every multi-tenant artifact:
+Single-user migration: drops every multi-tenant artifact:
 * tables: users, audit_logs, dataset_permissions
 * columns: datasets.created_by, datasets.org_id, dataset_versions.created_by,
   background_tasks.created_by, workflows.created_by, llm_configs.user_id
@@ -106,9 +106,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Phase D is a one-way pivot. Restoring the users / audit_logs /
+    """This migration is a one-way change. Restoring the users / audit_logs /
     permissions tables would require synthesising data that no longer
     exists in the codebase, so downgrade is intentionally unsupported."""
     raise NotImplementedError(
-        "Phase D drop migration cannot be reversed — see migration docstring."
+        "This drop migration cannot be reversed — see migration docstring."
     )

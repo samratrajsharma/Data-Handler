@@ -39,7 +39,7 @@ aiofiles>=24.1.0,<25.0.0
 structlog>=24.4.0,<25.0.0
 
 # ============================================
-# ML / AI (Phase 2+ onwards)
+# ML / AI
 # ============================================
 # PyTorch with Intel XPU support — install separately:
 #   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/xpu
@@ -55,24 +55,24 @@ scikit-learn>=1.5.0,<2.0.0
 sentence-transformers>=3.0.0,<4.0.0
 hdbscan>=0.8.38,<1.0.0
 
-# --- Phase 2: Vector DB ---
+# --- Vector DB ---
 qdrant-client>=1.9.0,<2.0.0
 
-# --- Phase 2: Data Profiling ---
+# --- Data profiling ---
 scipy>=1.13.0,<2.0.0
 
-# --- Phase 3: Multi-LLM Provider ---
+# --- Multi-LLM provider ---
 litellm>=1.40.0,<2.0.0
 
-# --- Phase 3B: Image Pipeline ---
+# --- Image pipeline ---
 Pillow>=10.4.0,<12.0.0
 transformers>=4.40.0,<5.0.0
 
-# --- Phase 3: Report exports (EDA download as PDF / DOCX) ---
+# --- Report exports (EDA download as PDF / DOCX) ---
 reportlab>=4.2.0,<5.0.0
 python-docx>=1.1.0,<2.0.0
 
-# --- Phase 3: Encoding detection (Excel-exported CP-1252 / UTF-16 CSVs) ---
+# --- Encoding detection (Excel-exported CP-1252 / UTF-16 CSVs) ---
 # Usually pulled in transitively by `requests`, but we depend on it directly
 # in core.api.routes._decode_flexible so pin it explicitly.
 charset-normalizer>=3.3.0,<4.0.0

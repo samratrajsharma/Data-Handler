@@ -1,16 +1,9 @@
 import { createContext, useContext, type ReactNode } from "react";
 
-// Phase A — single-user pivot.
-//
-// The backend no longer validates tokens; ``get_current_user`` returns a
-// fixed LOCAL_USER (role = superadmin) on every request. The frontend
-// therefore stops gating routes behind a login: this context now serves
-// a constant synthetic user so ProtectedRoute, role badges, and any
-// ``useAuth()`` consumer keep working unchanged.
-//
-// ``login`` / ``register`` / ``logout`` remain on the API as no-ops so
-// the legacy Login / Register pages (and any imports that still call
-// them) don't crash. Phase C will delete those pages and this file.
+// Single-user app: there is no login. This context exposes a constant local
+// user so route guards, role badges, and any `useAuth()` consumer keep working
+// without a real auth flow. `login` / `register` / `logout` are kept as no-ops
+// so older imports don't break.
 
 interface User {
   id: string;

@@ -18,12 +18,9 @@ import WorkflowDetail from "./pages/workflows/WorkflowDetail";
 import LLMConfig from "./pages/llm/LLMConfig";
 import Tasks from "./pages/tasks/Tasks";
 
-// Phase C — single-user pivot complete.
-//
-// The localhost app is the dashboard, and nothing else. Admin (user
-// management), Audit Logs, and the SuperAdmin entry are deleted. The
-// legacy /app/* redirects from Phase B are gone too — nothing internal
-// links to them anymore. Anything unknown lands on the dashboard home.
+// Single-user app: the dashboard is the whole surface — no user management,
+// audit log, or admin area, and no login gate. Any unknown path lands on the
+// dashboard home.
 
 export default function AppRouter() {
   return (

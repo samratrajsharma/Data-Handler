@@ -159,7 +159,7 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.warning("MinIO not available — skipping bucket init: %s", exc)
 
-    # Phase D — no SuperAdmin, no users table, no auto-seed.
+    # Single-user mode: no user table or seeding.
     # Lifespan startup is just init_db + MinIO bucket ensure.
 
     yield

@@ -298,7 +298,7 @@ def _read_csv_tolerant(raw_bytes: bytes, sep: str, encoding: str, skiprows: int 
     If even the tolerant pass fails, raises a friendlier RuntimeError
     that names the problem and points at the offending line.
 
-    FIX: ``on_bad_lines='skip'`` silently discards malformed rows, so we now
+    ``on_bad_lines='skip'`` silently discards malformed rows, so we now
     record how many rows were dropped and the pre-parse data-line count on the
     returned frame's ``.attrs`` (``skipped_rows`` / ``preparse_rows``). The
     pipeline surfaces these so users see "N rows skipped" instead of quietly
@@ -420,7 +420,7 @@ def run_structuring_pipeline(
         logger.info("Loaded dataset %s v%d: %d rows, %d columns",
                      dataset_id, version_number, len(df), len(df.columns))
 
-        # FIX: the tolerant CSV reader may have silently dropped malformed rows.
+        # The tolerant CSV reader may have silently dropped malformed rows.
         # Capture the count now (before the pipeline mutates the frame) so we
         # can surface it and reconcile the reported original row count.
         skipped_rows = int(df.attrs.get("skipped_rows", 0) or 0)

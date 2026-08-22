@@ -92,7 +92,7 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # --- Phase 2: Celery Worker ---
+  # --- Celery worker ---
   celery-worker:
     # Same image as the api service (one backend image, different command).
     image: ghcr.io/samratrajsharma/data-handler-api:latest
@@ -124,7 +124,7 @@ services:
       - datahandler-net
     restart: unless-stopped
 
-  # --- Phase 2: Qdrant Vector Database ---
+  # --- Qdrant vector database ---
   qdrant:
     image: qdrant/qdrant:latest
     container_name: datahandler-qdrant
@@ -137,7 +137,7 @@ services:
       - datahandler-net
     restart: unless-stopped
 
-  # --- Phase 3: Ollama (Local LLM) — optional, comment out if not needed ---
+  # --- Ollama (optional local LLM) ---
   ollama:
     image: ollama/ollama:latest
     container_name: datahandler-ollama

@@ -6,12 +6,9 @@ import "../shared/index.css";
 import "../shared/stencil-components/index";
 import AppRouter from "./AppRouter";
 
-// Phase B — localhost-app entry point.
-//
-// Launched by index.html. Boots the dashboard directly — no landing-page
-// wrapper, no anonymous-vs-logged-in fork. The AuthProvider here is the
-// Phase A single-user shim (LOCAL_USER always present), so ProtectedRoute
-// and role-aware widgets keep working unchanged.
+// App entry point. Boots the dashboard directly — no landing page and no
+// logged-in/anonymous fork. AuthProvider supplies the constant local user so
+// route guards and role-aware widgets keep working.
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

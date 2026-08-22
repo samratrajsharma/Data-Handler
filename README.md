@@ -21,6 +21,8 @@ It handles three kinds of data through one consistent pipeline:
 
 The sidebar is organised by data type (**Tabular · Image · Text**); pick a mode and you only see that type's tools.
 
+> **Project status:** early and actively developed — single-user and pre-1.0 today. A lighter one-command personal install and an optional team mode are on the [roadmap](#roadmap), and the project is [open to contributors](#contributing).
+
 ## Features
 
 ### Datasets & ingestion
@@ -173,6 +175,40 @@ The full stack runs in Docker via `run.ps1` / `run.sh` (the API and worker hot-r
 
 - **Backend tests:** `pytest`
 - **Frontend:** `cd frontend/Frontend && npm install && npm run dev`
+
+## Roadmap
+
+Data Handler is early and moving quickly. Here's where it's headed — priorities may shift, and feedback is welcome.
+
+**Available now**
+
+- Full Docker stack: tabular, image, and text pipelines end to end, with background jobs and local-only storage, for a single user.
+- Prebuilt backend and frontend images published to GHCR on each release tag, so a fresh install downloads images instead of building them locally.
+
+**Next**
+
+- **Lite mode for personal use** — a much lighter install built on **SQLite** and the local filesystem, with no Docker and no PostgreSQL / MinIO / Qdrant / Redis to run. Aimed at individuals who want the fastest possible personal setup; the Docker stack stays the path for the full feature set.
+- **Smoother first run** — slimmer images and faster cold starts.
+
+**Later / exploring**
+
+- **Team mode** — optional accounts and roles on the Docker version, for small groups who want to label together.
+- **Active learning and label-error detection** — surface the rows most worth labelling next, and flag likely mislabels.
+- **More exporters and integrations**, driven by what people actually need.
+
+The two-tier intent is simple: the **Docker** version for the full, collaboration-ready system, and a lightweight **SQLite "lite"** version for quick personal use.
+
+## Contributing
+
+Contributions, bug reports, and ideas are all welcome — this is an open project and collaborators are encouraged.
+
+- **Found a bug or have an idea?** [Open an issue](https://github.com/samratrajsharma/Data-Handler/issues) describing what you saw or what you'd like to see.
+- **Want to build something?** Fork the repo, make your change on a branch, and open a pull request. For anything large, open an issue first so we can talk through the approach.
+- **Good places to start:** documentation, new import/export formats, additional cleaning and labeling rules, and UI polish.
+
+Local development setup is in [Development](#development) above (`pytest` for the backend, `npm run dev` for the frontend). Please keep pull requests focused, and describe the change and how you tested it. By contributing, you agree your contributions are licensed under the project's MIT License.
+
+If Data Handler is useful to you, a star on the repo helps others find it.
 
 ## License
 

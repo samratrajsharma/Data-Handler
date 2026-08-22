@@ -3,10 +3,8 @@ import { Link } from "react-router-dom";
 import { taskApi } from "../../../shared/api/tasks";
 import "./Dashboard.css";
 
-// Phase C — single-user dashboard. The admin-stats grid (total_users,
-// active_users, etc.) is gone with the rest of the multi-tenant surface.
-// What remains is Quick Actions + Recent Tasks, which is the useful bit
-// for a single user.
+// Single-user dashboard: just Quick Actions + Recent Tasks (the multi-tenant
+// admin stats are gone).
 
 // Aligned to the actual flow: bring data in, then one entry point per mode.
 const QUICK_ACTIONS = [

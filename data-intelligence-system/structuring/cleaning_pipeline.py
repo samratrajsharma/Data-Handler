@@ -78,7 +78,7 @@ def handle_nulls(
     affected_cols = [c for c in df.columns if df[c].isna().any()]
 
     if strategy == "drop_rows":
-        # FIX: A plain df.dropna() removes any row that has >=1 null across ALL
+        # A plain df.dropna() removes any row that has >=1 null across ALL
         # columns. If even one column is wholly null, EVERY row contains a null
         # in that column and the entire dataset gets deleted. Restrict the drop
         # to the subset of columns that actually have at least one real value so
@@ -160,7 +160,7 @@ def remove_outliers(
 ) -> tuple[pd.DataFrame, CleaningStep]:
     """Remove rows with numeric outliers using IQR method.
 
-    FIX: The naive IQR filter is catastrophic on columns where the IQR is zero
+    The naive IQR filter is catastrophic on columns where the IQR is zero
     or where one value dominates — binary flags, label-encoded indicators and
     zero-inflated columns all have ``q1 == q3`` (IQR == 0), which makes the
     bounds collapse to a single point so every non-modal row is flagged as an
@@ -334,7 +334,7 @@ def encode_categorical(
         touched.append(col)
         try:
             if mode == "onehot":
-                # FIX: Cap one-hot cardinality. A high-cardinality column
+                # Cap one-hot cardinality. A high-cardinality column
                 # (user_id, email, free text) would explode into thousands of
                 # boolean columns and can OOM the worker. Skip it with an
                 # explicit warning instead of silently swallowing an error or

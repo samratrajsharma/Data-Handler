@@ -183,12 +183,11 @@ async def _user_from_header_or_query(
 ) -> User:
     """Image-proxy auth dependency.
 
-    Phase D — auth is gone. This used to decode a token from the
-    ``Authorization`` header or a ``?token=`` query parameter, because
-    browser ``<img>`` tags can't attach headers. With token validation
-    gone, it simply delegates to :func:`get_current_user`, which returns
-    the local user. The ``request`` and ``token`` parameters are kept so
-    existing call sites and URL shapes (``?token=…``) don't break.
+    Single-user mode: this used to decode a token from the ``Authorization``
+    header or a ``?token=`` query parameter (browser ``<img>`` tags can't
+    attach headers). With no token validation it simply delegates to
+    :func:`get_current_user`. The ``request`` and ``token`` parameters are
+    kept so existing call sites and URL shapes (``?token=…``) don't break.
     """
     _ = request, token  # explicitly unused in single-user mode
     return await get_current_user()

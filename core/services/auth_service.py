@@ -1,7 +1,7 @@
 """
 Authentication service.
 
-Phase D — auth is gone.
+Single-user mode: there is no real authentication.
 
 ``get_current_user`` returns a synthetic in-memory ``User`` (a tiny
 dataclass that mirrors the old ORM shape so existing route signatures

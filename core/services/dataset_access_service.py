@@ -1,9 +1,9 @@
 """
 Dataset access control.
 
-Phase D — multi-tenant access is gone. The helpers are kept as no-op shims
-so the dozens of route call sites that pass ``current_user`` through them
-don't all need editing in this phase. They now collapse to:
+Single-user mode: there is no multi-tenant access control. These helpers are
+kept as no-op shims so route call sites that pass ``current_user`` through
+them keep working. They collapse to:
 
 * every helper accepts the user and ignores it
 * ``assert_dataset_access`` just checks the row exists (404 if not)

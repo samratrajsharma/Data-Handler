@@ -172,3 +172,7 @@ postgres_data/
 *.tmp
 *.temp
 .cache/
+
+# --- Google Drive sync temp files ---
+.tmp.driveupload/
+.tmp.drivedownload/

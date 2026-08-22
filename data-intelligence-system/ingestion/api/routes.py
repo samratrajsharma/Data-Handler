@@ -3,8 +3,7 @@ FastAPI router for the Data Ingestion API.
 
 Prefix: /api/v1/datasets
 
-All endpoints require authentication.  Role gates are enforced via the
-Phase D: single-user mode, no auth, no RBAC.
+Single-user mode: no authentication or RBAC.
 """
 
 from __future__ import annotations
@@ -217,7 +216,7 @@ def _extract_columns(raw_bytes: bytes, file_name: str) -> list[str]:
     ext = _get_extension(file_name)
     try:
         if ext in (".csv", ".tsv", ".txt"):
-            # FIX: decode with the same flexible detector the pipeline uses so
+            # Decode with the same flexible detector the pipeline uses so
             # non-UTF-8 CSVs (Windows-1252 / Latin-1) expose real column names
             # (e.g. "Prénom") instead of mojibake ("Pr�nom") that rules never
             # match. Hardcoded utf-8/replace here diverged from the pipeline.
@@ -231,7 +230,7 @@ def _extract_columns(raw_bytes: bytes, file_name: str) -> list[str]:
             reader = csv_mod.reader(io.StringIO(header_line), delimiter=delimiter)
             return [c.strip() for c in next(reader, []) if c.strip()]
         if ext in (".json", ".jsonl"):
-            # FIX: use the shared flexible decoder (see CSV branch above).
+            # Use the shared flexible decoder (see CSV branch above).
             text, _ = _decode_flexible(raw_bytes)
             text = text.strip()
             if ext == ".jsonl":
@@ -252,7 +251,7 @@ def _extract_preview(raw_bytes: bytes, file_name: str, limit: int = 10) -> tuple
     ext = _get_extension(file_name)
     try:
         if ext in (".csv", ".tsv", ".txt"):
-            # FIX: decode via the shared flexible detector so previewed rows
+            # Decode via the shared flexible detector so previewed rows
             # match the pipeline's decoding (see _extract_columns).
             text, _ = _decode_flexible(raw_bytes)
             delimiter = _sniff_delimiter(text, ext)
@@ -272,7 +271,7 @@ def _extract_preview(raw_bytes: bytes, file_name: str, limit: int = 10) -> tuple
                 rows.append([str(v) for v in row])
             return columns, rows
         if ext in (".json", ".jsonl"):
-            # FIX: use the shared flexible decoder (see CSV branch above).
+            # Use the shared flexible decoder (see CSV branch above).
             text, _ = _decode_flexible(raw_bytes)
             text = text.strip()
             if ext == ".jsonl":

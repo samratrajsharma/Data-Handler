@@ -46,7 +46,7 @@ class DatasetService:
         db.add(dataset)
         await db.flush()
 
-        # Phase D — single-user pivot: no per-user dataset permission.
+        # Single-user mode: no per-user dataset permissions.
 
         # Audit
 
@@ -179,7 +179,7 @@ class DatasetService:
 
         Returns ``(datasets, total_count)`` for pagination.
         """
-        # Phase D — single-user mode: list every dataset.
+        # Single-user mode: list every dataset.
 
         # Count query
         count_stmt = select(func.count()).select_from(Dataset)
