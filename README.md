@@ -210,6 +210,17 @@ Local development setup is in [Development](#development) above (`pytest` for th
 
 If Data Handler is useful to you, a star on the repo helps others find it.
 
+### Releasing (maintainers)
+
+Publishing a version tag builds and pushes the prebuilt images so users install by download instead of build:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+This triggers the **Build & publish images** workflow, which pushes `data-handler-api` and `data-handler-frontend` to GHCR. The first time, set both packages to **Public** (repo → Packages → each package → Package settings → Change visibility) so anyone can pull without authenticating.
+
 ## License
 
 Released under the [MIT License](LICENSE).
