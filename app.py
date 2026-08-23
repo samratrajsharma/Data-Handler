@@ -179,11 +179,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — allow all origins in development; tighten for production
+# CORS — restricted to the local frontend. A wildcard here is dangerous:
+# because this app has no authentication, "*" (which Starlette reflects back
+# as the caller's own Origin when credentials are on) lets ANY website you
+# visit call this API from your browser and read or modify your local data.
+# Keep this list tight; add origins deliberately if you actually need them.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

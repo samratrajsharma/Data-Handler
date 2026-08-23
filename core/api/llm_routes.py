@@ -5,6 +5,7 @@ All endpoints require at minimum the 'viewer' role.
 """
 
 from typing import Optional
+from urllib.parse import urlparse
 from uuid import UUID
 
 import httpx
@@ -22,6 +23,29 @@ from core.llm.providers import LLMProvider, LLMConfig, PROVIDER_DEFAULTS
 from core.llm.service import LLMService
 
 logger = logging.getLogger(__name__)
+
+# A stored api_key is later sent to this provider base_url, so a caller-
+# controlled value pointing at an arbitrary host is a credential-exfiltration
+# (SSRF) vector. Only allow known provider hosts and local model endpoints.
+_ALLOWED_BASE_URL_HOSTS = {
+    "localhost", "127.0.0.1", "host.docker.internal",
+    "api.openai.com", "api.anthropic.com", "api.groq.com",
+}
+
+
+def _validate_base_url(base_url: Optional[str]) -> None:
+    """Reject caller-supplied base URLs that point at unapproved hosts."""
+    if not base_url:
+        return
+    parsed = urlparse(base_url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise HTTPException(status_code=400, detail="Invalid base_url")
+    if parsed.hostname not in _ALLOWED_BASE_URL_HOSTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"base_url host '{parsed.hostname}' is not allowed",
+        )
+
 
 router = APIRouter(prefix="/api/v1/llm", tags=["llm"])
 
@@ -266,6 +290,7 @@ async def save_config(
 ):
     """Create or update an LLM provider configuration for the current user."""
     _resolve_provider(body.provider)  # validate provider name
+    _validate_base_url(body.base_url)  # reject SSRF / key-exfil base URLs
 
     # If marking as default, clear other defaults first
     if body.is_default:

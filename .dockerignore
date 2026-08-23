@@ -3,6 +3,10 @@
 .github/
 .gitignore
 
+# Google Drive sync junk — must NEVER be baked into the image
+.tmp.driveupload/
+.tmp.drivedownload/
+
 # Python bytecode / test & lint caches
 __pycache__/
 *.py[cod]
