@@ -28,12 +28,18 @@ jobs:
     strategy:
       matrix:
         include:
+          # Backend (api + celery worker share this image). The Dockerfile is
+          # multi-stage; runtime-ml is the full image with PyTorch.
           - name: api
+            image: data-handler-api
             context: .
             dockerfile: infrastructure/Dockerfile
+            target: runtime-ml
           - name: frontend
+            image: data-handler-frontend
             context: frontend/Frontend
             dockerfile: frontend/Frontend/Dockerfile
+            target: ""
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,7 +58,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/data-handler-${{ matrix.name }}
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image }}
           tags: |
             type=raw,value=latest
             type=ref,event=tag
@@ -63,8 +69,11 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Per-entry cache scope. Previously all matrix entries shared one
+          # scope and evicted each other's layers on every run.
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}

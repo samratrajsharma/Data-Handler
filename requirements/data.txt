@@ -1,0 +1,15 @@
+# Scientific / tabular data stack (~220 MB installed).
+# Large and slow-changing -> its own image layer, so it caches well and pulls
+# in parallel with the core and extras layers.
+#
+# hdbscan has no manylinux wheel for many releases and compiles from source,
+# which is the only reason the build stage needs gcc/g++. Nothing here needs a
+# compiler at RUNTIME, so the final image ships without one.
+#
+# All of these link against OpenMP -> the runtime base installs libgomp1.
+
+numpy>=1.26.0,<3.0.0
+pandas>=2.2.0,<3.0.0
+scipy>=1.13.0,<2.0.0
+scikit-learn>=1.5.0,<2.0.0
+hdbscan>=0.8.38,<1.0.0

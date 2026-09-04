@@ -1,0 +1,105 @@
+name: Smoke test
+
+# Answers the question "does a clean install actually work?" automatically, on
+# every push — instead of finding out when a user reports it.
+#
+# It reproduces the new-user path: fresh checkout, .env from the example, bring
+# the whole stack up, and assert the app really responds. If this is green, the
+# code on main starts. If it is red, it does not — regardless of what anyone
+# believed while writing it.
+#
+# Deliberately NOT a gate on docker-publish.yml. A flaky infrastructure test
+# should surface a problem, not block a release; the two workflows run
+# independently and are read together.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+
+jobs:
+  stack:
+    name: Stack comes up from a clean checkout
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # run.ps1 / run.sh create this for real users; the workflow does the same
+      # thing explicitly so a missing .env fails loudly here rather than later.
+      - name: Create .env from the example
+        run: cp .env.example .env
+
+      # Builds from THIS commit rather than pulling GHCR, so the test covers the
+      # code being pushed instead of the last published image.
+      - name: Build and start the stack
+        run: |
+          docker compose -f infrastructure/docker-compose.yml up -d --build
+          echo "--- containers ---"
+          docker compose -f infrastructure/docker-compose.yml ps
+
+      - name: Wait for the API to report healthy
+        run: |
+          for i in $(seq 1 90); do
+            if curl -fsS http://localhost:8000/health | grep -q '"status":"healthy"'; then
+              echo "API healthy after ~$((i*2))s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::API never became healthy within 180s"
+          exit 1
+
+      # Guards the specific regression that started all of this: a bind mount
+      # shadowing the image meant the container could run code that was not in
+      # the image it claims to be. /app must come from the image layer.
+      - name: Assert the app runs from the image, not a mount
+        run: |
+          docker compose -f infrastructure/docker-compose.yml exec -T api test -f /app/app.py
+          mounted=$(docker inspect datahandler-api \
+            --format '{{range .Mounts}}{{.Destination}} {{end}}')
+          echo "api mounts: $mounted"
+          case "$mounted" in
+            *"/app"*) echo "::error::/app is bind-mounted in the default compose file"; exit 1 ;;
+          esac
+
+      - name: Assert core endpoints respond
+        run: |
+          set -e
+          curl -fsS http://localhost:8000/docs            > /dev/null && echo "  /docs OK"
+          curl -fsS http://localhost:8000/api/v1/datasets > /dev/null && echo "  /api/v1/datasets OK"
+          curl -fsS http://localhost:8000/api/v1/tasks    > /dev/null && echo "  /api/v1/tasks OK"
+
+      # A crash-looping worker is invisible from the API side: the UI loads and
+      # every background job queues forever. Ping it directly.
+      - name: Assert the Celery worker answers
+        run: |
+          docker compose -f infrastructure/docker-compose.yml exec -T celery-worker \
+            celery -A core.celery_app inspect ping -t 30
+
+      - name: Assert the frontend serves the SPA
+        run: |
+          curl -fsS http://localhost:3000 | grep -qi "<!doctype html" \
+            && echo "  frontend OK"
+
+      # Only on failure, and this is the whole point: the logs that would
+      # otherwise require someone to reproduce it locally.
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          echo "=================== ps ==================="
+          docker compose -f infrastructure/docker-compose.yml ps -a
+          for svc in api celery-worker postgres redis minio qdrant frontend; do
+            echo "=================== $svc ==================="
+            docker compose -f infrastructure/docker-compose.yml logs --tail=80 "$svc" || true
+          done
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f infrastructure/docker-compose.yml down -v

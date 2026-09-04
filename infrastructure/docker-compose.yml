@@ -6,23 +6,25 @@ services:
     build:
       context: ..
       dockerfile: infrastructure/Dockerfile
+      target: runtime-ml
     container_name: datahandler-api
-    # Override the Dockerfile CMD to enable --reload so code changes on
-    # the host (bind-mounted at /app) are picked up automatically without
-    # restarting the container. This eliminates the "did -Refresh work?"
-    # confusion entirely for the API.
-    command: uvicorn app:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app
+    # No command override and no source bind mount here on purpose. The API runs
+    # the code baked into the image, so what you pulled is what executes and the
+    # image digest actually describes the running code.
+    #
+    # Live reload for contributors lives in docker-compose.dev.yml
+    # (run.ps1 -Dev / run.sh --dev), which adds the bind mount and --reload back.
     ports:
       - "127.0.0.1:8000:8000"
     env_file:
       - ../.env
     volumes:
-      - ..:/app
       - hf_cache:/opt/hf-cache
     environment:
       HF_HOME: /opt/hf-cache
       TRANSFORMERS_CACHE: /opt/hf-cache
       SENTENCE_TRANSFORMERS_HOME: /opt/hf-cache/sentence-transformers
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
     # Add host.docker.internal so the container can reach services running
     # on the host machine (e.g. Ollama at host.docker.internal:11434).
     # Docker Desktop on Windows/Mac sets this automatically; explicit
@@ -99,17 +101,26 @@ services:
     build:
       context: ..
       dockerfile: infrastructure/Dockerfile
+      target: runtime-ml
     container_name: datahandler-celery-worker
     command: celery -A core.celery_app worker --loglevel=info --concurrency=2
+    # The worker shares the api image, which carries an HTTP HEALTHCHECK — but
+    # the worker listens on no port, so that check would fail forever and mark
+    # the container unhealthy. Disable it here.
+    healthcheck:
+      disable: true
     env_file:
       - ../.env
     volumes:
-      - ..:/app
       - hf_cache:/opt/hf-cache
     environment:
       HF_HOME: /opt/hf-cache
       TRANSFORMERS_CACHE: /opt/hf-cache
       SENTENCE_TRANSFORMERS_HOME: /opt/hf-cache/sentence-transformers
+      # Point at the bundled Ollama when the `llm` profile is active; the
+      # launchers export OLLAMA_BASE_URL=http://ollama:11434 in that case.
+      # Default stays host.docker.internal for anyone running Ollama on the host.
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
     # AI labeling tasks run here and need to reach Ollama on the host.
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -148,6 +159,30 @@ services:
     networks:
       - datahandler-net
     restart: unless-stopped
+    profiles:
+      - llm
+
+  # --- One-shot: pull the default model into the bundled Ollama ---
+  # Without this the `llm` profile starts an Ollama server with NO models, and
+  # the first AI-labeling request fails deep inside a background job with an
+  # opaque "model not found". Runs once, exits, does not restart.
+  #
+  # First run downloads several GB of model weights into the ollama_data volume;
+  # subsequent runs find the model present and exit immediately.
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: datahandler-ollama-init
+    depends_on:
+      - ollama
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        sleep 3;
+        OLLAMA_HOST=http://ollama:11434 ollama pull "${DEFAULT_LLM_MODEL:-llama3}"
+    networks:
+      - datahandler-net
+    restart: "no"
     profiles:
       - llm
 

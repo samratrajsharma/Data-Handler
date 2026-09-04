@@ -1,0 +1,20 @@
+# Deep-learning stack — CLIP image embeddings and local sentence-transformers.
+#
+# ~1.4 GB installed, i.e. roughly half the full image. It is isolated here so
+# the slim Docker target can omit it entirely.
+#
+# torch is NOT listed: it needs a custom --index-url for the CPU-only wheel
+# (the default PyPI wheel is the ~2.3 GB CUDA build). The Dockerfile installs
+# it first, from https://download.pytorch.org/whl/cpu, so that transformers and
+# sentence-transformers then resolve torch as already-satisfied.
+#
+# WHY OMITTING THIS STILL WORKS:
+# nothing in the codebase imports torch/transformers/sentence_transformers at
+# module scope. eda/embedder.py guards its import with try/except ImportError
+# and falls back to TF-IDF + TruncatedSVD; image_pipeline/clip_embedder.py
+# imports torch inside functions; every call site imports clip_embedder lazily.
+# So a build without this file serves the full API and the tabular + text
+# pipelines — only image embedding / CLIP text search are unavailable.
+
+transformers>=4.40.0,<5.0.0
+sentence-transformers>=3.0.0,<4.0.0

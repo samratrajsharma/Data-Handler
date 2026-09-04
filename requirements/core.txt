@@ -1,0 +1,45 @@
+# Core web / DB / queue / utils.
+# Small, fast-moving, changes most often -> kept as its own image layer so a
+# dependency bump here does not invalidate the big data-stack layer below.
+
+# --- Web framework ---
+fastapi>=0.115.0,<1.0.0
+uvicorn[standard]>=0.32.0,<1.0.0
+python-multipart>=0.0.12,<1.0.0
+
+# --- Database ---
+# psycopg2-binary bundles libpq inside the wheel, so the runtime image needs
+# no libpq-dev / libpq5. asyncpg drives the async FastAPI side; psycopg2 drives
+# the sync Celery side (prefork workers cannot use an asyncio engine).
+sqlalchemy[asyncio]>=2.0.0,<3.0.0
+asyncpg>=0.30.0,<1.0.0
+psycopg2-binary>=2.9.0,<3.0.0
+alembic>=1.14.0,<2.0.0
+
+# --- Validation / settings ---
+pydantic[email]>=2.9.0,<3.0.0
+pydantic-settings>=2.6.0,<3.0.0
+
+# --- Object storage ---
+# boto3 was removed: it was never imported anywhere in the codebase and cost
+# ~120 MB (botocore ships a JSON service model for every AWS API). MinIO's own
+# client is the only storage client used.
+minio>=7.2.0,<8.0.0
+
+# --- Cache & task queue ---
+redis>=5.2.0,<6.0.0
+celery>=5.4.0,<6.0.0
+
+# --- HTTP client ---
+httpx>=0.28.0,<1.0.0
+
+# --- Utilities ---
+python-dateutil>=2.9.0,<3.0.0
+orjson>=3.10.0,<4.0.0
+aiofiles>=24.1.0,<25.0.0
+structlog>=24.4.0,<25.0.0
+
+# --- Encoding detection (Excel-exported CP-1252 / UTF-16 CSVs) ---
+# Used directly by the flexible CSV decoder in the ingestion routes and by
+# _detect_encoding in structuring_tasks.py.
+charset-normalizer>=3.3.0,<4.0.0

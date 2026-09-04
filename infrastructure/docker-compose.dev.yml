@@ -1,0 +1,43 @@
+# Development overlay — live code reload.
+#
+#   run.ps1 -Dev        (Windows)
+#   run.sh  --dev       (macOS / Linux)
+#
+# which append `-f infrastructure/docker-compose.dev.yml` to every compose call.
+#
+# WHY THIS IS SEPARATE
+# The base compose file deliberately has no source bind mount. The Dockerfile
+# bakes the app in with `COPY . .`, and mounting the host repo over /app masks
+# it completely — so "pull a newer image to update" silently would not update
+# the code that actually runs, and a bug report's image digest would say nothing
+# about what executed. Contributors opt into that trade explicitly; users don't
+# pay for it.
+#
+# WHAT IT COSTS (Docker Desktop on Windows/macOS especially)
+#  - every import crosses the host<->VM filesystem bridge, which is 1-2 orders
+#    of magnitude slower per operation than an image layer
+#  - the image's precompiled .pyc are masked along with the source, so modules
+#    are recompiled from host source on each start
+#  - --reload uses watchfiles, and bind mounts do not propagate inotify events
+#    from the host, so it degrades to walking the tree on an interval forever:
+#    continuous background CPU and IO even when nobody is editing
+#
+# On Windows, keeping the repo inside the WSL2 filesystem instead of under
+# C:\Users\... avoids the bridge entirely and is much faster.
+#
+# NOTE: the Celery worker still does NOT auto-reload — Celery has no equivalent
+# of uvicorn's --reload here. After changing task code:
+#   docker compose -f infrastructure/docker-compose.yml \
+#                  -f infrastructure/docker-compose.dev.yml restart celery-worker
+
+services:
+  api:
+    command: uvicorn app:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app
+    volumes:
+      - ..:/app
+      - hf_cache:/opt/hf-cache
+
+  celery-worker:
+    volumes:
+      - ..:/app
+      - hf_cache:/opt/hf-cache

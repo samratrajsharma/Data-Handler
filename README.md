@@ -35,7 +35,7 @@ The sidebar is organised by data type (**Tabular · Image · Text**); pick a mod
 
 - **Structuring** — schema/type detection, then configurable cleaning: null handling (mode/mean/median/fill/drop), duplicate removal, IQR outlier removal, `snake_case` column standardization, case normalization, and one-hot / label encoding. Produces a cleaned file plus an **A–F quality score** across completeness, uniqueness, consistency, and validity.
 - **EDA** — per-column profiling, Pearson correlations, text embeddings (`all-MiniLM-L6-v2`), and `KMeans` clustering with a silhouette score; interactive charts and JSON/PDF/DOCX export.
-- **Rule-based labeling** — assign labels with boolean rules over 16 operators (`equals`, `contains`, `regex_match`, `between`, `in_list`, …), AND/OR logic, priorities, conflict strategies, and a dry-run preview.
+- **Rule-based labeling** — assign labels with boolean rules over 15 operators (`equals`, `contains`, `regex_match`, `between`, `in_list`, …), AND/OR logic, priorities, conflict strategies, and a dry-run preview.
 - **AI labeling** — classify rows with an LLM using your labels, plain-English instructions, and few-shot examples; preview on a few rows before the full run. Bring your own provider (OpenAI, Anthropic, Groq, local Ollama, or any OpenAI-compatible endpoint).
 
 ### Image
@@ -88,11 +88,20 @@ FastAPI (:8000) ──queue──► Celery worker
 
 ### Run
 
-**Windows (PowerShell):**
+**Windows:** double-click **`run.cmd`**, or from a terminal:
 
-```powershell
-.\run.ps1
 ```
+run.cmd
+```
+
+Flags pass straight through — `run.cmd -Build`, `run.cmd -Fresh -Llm`.
+
+> **Why `run.cmd` and not `run.ps1`?** Windows marks files extracted from a
+> downloaded ZIP as untrusted, and PowerShell refuses to run an untrusted
+> `.ps1` ("*is not digitally signed*"). `run.cmd` is a three-line wrapper that
+> isn't subject to that policy — it starts `run.ps1` with the policy bypassed
+> for that one process, changing nothing about your machine. `.\run.ps1` still
+> works if you cloned with git rather than downloading the ZIP.
 
 **macOS / Linux:**
 
@@ -100,7 +109,7 @@ FastAPI (:8000) ──queue──► Celery worker
 ./run.sh
 ```
 
-The first run builds the images (a few minutes), then starts everything and opens the app; later runs just start the existing images (fast). Once it's up:
+The first run **downloads** the prebuilt images — roughly 800 MB, a few minutes on a normal connection — then starts everything and opens the app. Later runs reuse what's on disk and start in seconds. (`-Build` / `--build` is the build-from-source path; you only need it after changing code.) Once it's up:
 
 | Service | URL |
 | --- | --- |
@@ -118,6 +127,7 @@ Combine freely (e.g. `.\run.ps1 -Fresh -Llm`):
 | PowerShell | Bash | Effect |
 | --- | --- | --- |
 | `-Build` | `--build` | Rebuild the images (use after changing code) |
+| `-Dev` | `--dev` | Live code reload — for contributors editing Python (see [Development](#development)) |
 | `-Fresh` | `--fresh` | Wipe all data volumes first, then rebuild (clean slate) |
 | `-Llm` | `--llm` | Also start the bundled Ollama container (local LLM) |
 | `-Stop` | `--stop` | Stop the stack (data volumes preserved) |
@@ -171,7 +181,26 @@ Data Handler/
 
 ## Development
 
-The full stack runs in Docker via `run.ps1` / `run.sh` (the API and worker hot-reload on code changes; the frontend is rebuilt each run).
+The full stack runs in Docker via `run.ps1` / `run.sh`.
+
+By default the containers run the code **baked into the image**, so what you pulled is exactly what executes. For live reload while editing Python, pass `-Dev` / `--dev`:
+
+```powershell
+.\run.ps1 -Dev          # Windows
+```
+```bash
+./run.sh --dev          # macOS / Linux
+```
+
+That layers `infrastructure/docker-compose.dev.yml` on top, which mounts this repo over `/app` and runs uvicorn with `--reload`.
+
+Two things to know about dev mode:
+
+- **It is noticeably slower to start**, especially on Docker Desktop for Windows/macOS. Every import crosses the host↔VM filesystem bridge, and the mount masks the image's precompiled bytecode. On Windows, keeping the repo inside the WSL2 filesystem rather than under `C:\Users\...` avoids the bridge and is much faster.
+- **The Celery worker still does not auto-reload.** After changing task code:
+  ```bash
+  docker compose -f infrastructure/docker-compose.yml -f infrastructure/docker-compose.dev.yml restart celery-worker
+  ```
 
 - **Backend tests:** `pytest`
 - **Frontend:** `cd frontend/Frontend && npm install && npm run dev`
@@ -188,7 +217,7 @@ Data Handler is early and moving quickly. Here's where it's headed — prioritie
 **Next**
 
 - **Lite mode for personal use** — a much lighter install built on **SQLite** and the local filesystem, with no Docker and no PostgreSQL / MinIO / Qdrant / Redis to run. Aimed at individuals who want the fastest possible personal setup; the Docker stack stays the path for the full feature set.
-- **Smoother first run** — slimmer images and faster cold starts.
+- **Faster cold starts** — models still download on first use; caching them better is the next win.
 
 **Later / exploring**
 
@@ -219,7 +248,9 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-This triggers the **Build & publish images** workflow, which pushes `data-handler-api` and `data-handler-frontend` to GHCR. The first time, set both packages to **Public** (repo → Packages → each package → Package settings → Change visibility) so anyone can pull without authenticating.
+This triggers the **Build & publish images** workflow, which pushes `data-handler-api` (~406 MB download) and `data-handler-frontend` (~94 MB) to GHCR, each tagged `latest`, the version tag, and a short SHA.
+
+The first time, set both packages to **Public** (repo → Packages → each package → Package settings → Change visibility) so anyone can pull without authenticating.
 
 ## License
 

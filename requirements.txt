@@ -1,88 +1,28 @@
 # ============================================
-# Data Handler - Requirements
+# Data Handler — Requirements
 # ============================================
-
-# --- Web Framework ---
-fastapi>=0.115.0,<1.0.0
-uvicorn[standard]>=0.32.0,<1.0.0
-python-multipart>=0.0.12,<1.0.0
-
-# --- Database ---
-sqlalchemy[asyncio]>=2.0.0,<3.0.0
-asyncpg>=0.30.0,<1.0.0
-psycopg2-binary>=2.9.0,<3.0.0
-alembic>=1.14.0,<2.0.0
-
-# --- Data Validation ---
-pydantic[email]>=2.9.0,<3.0.0
-pydantic-settings>=2.6.0,<3.0.0
-
-# --- Authentication ---
-
-# --- Object Storage (MinIO / S3) ---
-minio>=7.2.0,<8.0.0
-boto3>=1.35.0,<2.0.0
-
-# --- Caching & Task Queue ---
-redis>=5.2.0,<6.0.0
-celery>=5.4.0,<6.0.0
-
-# --- HTTP Client ---
-httpx>=0.28.0,<1.0.0
-
-# --- Utilities ---
-python-dateutil>=2.9.0,<3.0.0
-orjson>=3.10.0,<4.0.0
-aiofiles>=24.1.0,<25.0.0
-
-# --- Logging & Monitoring ---
-structlog>=24.4.0,<25.0.0
-
-# ============================================
-# ML / AI
-# ============================================
-# PyTorch with Intel XPU support — install separately:
-#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/xpu
-#   pip install intel-extension-for-pytorch
 #
-# Do NOT list torch here — it needs the custom --index-url flag.
-# Use the Makefile target `make install-ml` instead.
+# Split into requirements/*.txt so the Docker build can install each group as
+# its own layer. Docker pulls layers in parallel (3 at a time by default) but
+# cannot parallelise *within* a layer — one 1 GB layer downloads on a single
+# connection. Splitting turned the image pull from one serial stream into
+# several concurrent ones.
+#
+#   requirements/core.txt    web, DB, queue, utils      (~120 MB)
+#   requirements/data.txt    numpy/pandas/scipy/sklearn (~220 MB)
+#   requirements/extras.txt  qdrant, litellm, exports   (~110 MB)
+#   requirements/ml.txt      transformers + s-t         (~150 MB, needs torch)
+#   requirements/dev.txt     pytest, ruff, mypy         (not shipped in images)
+#
+# This aggregate keeps `pip install -r requirements.txt` behaving as before —
+# a full install including the ML stack.
+#
+# torch is intentionally absent: it needs a custom index URL. Install it with
+#   CPU:  pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   XPU:  make install-ml
+# The Docker build does this for you (see infrastructure/Dockerfile).
 
-# These are safe to install normally:
-numpy>=1.26.0,<3.0.0
-pandas>=2.2.0,<3.0.0
-scikit-learn>=1.5.0,<2.0.0
-sentence-transformers>=3.0.0,<4.0.0
-hdbscan>=0.8.38,<1.0.0
-
-# --- Vector DB ---
-qdrant-client>=1.9.0,<2.0.0
-
-# --- Data profiling ---
-scipy>=1.13.0,<2.0.0
-
-# --- Multi-LLM provider ---
-litellm>=1.40.0,<2.0.0
-
-# --- Image pipeline ---
-Pillow>=10.4.0,<12.0.0
-transformers>=4.40.0,<5.0.0
-
-# --- Report exports (EDA download as PDF / DOCX) ---
-reportlab>=4.2.0,<5.0.0
-python-docx>=1.1.0,<2.0.0
-
-# --- Encoding detection (Excel-exported CP-1252 / UTF-16 CSVs) ---
-# Usually pulled in transitively by `requests`, but we depend on it directly
-# in core.api.routes._decode_flexible so pin it explicitly.
-charset-normalizer>=3.3.0,<4.0.0
-
-# ============================================
-# Development & Testing
-# ============================================
-pytest>=8.3.0,<9.0.0
-pytest-asyncio>=0.24.0,<1.0.0
-pytest-cov>=6.0.0,<7.0.0
-httpx>=0.28.0,<1.0.0
-ruff>=0.8.0,<1.0.0
-mypy>=1.13.0,<2.0.0
+-r requirements/core.txt
+-r requirements/data.txt
+-r requirements/extras.txt
+-r requirements/ml.txt
