@@ -30,7 +30,7 @@ export default function ImagePipeline() {
   const [selectedImage, setSelectedImage] = useState<ImageAsset | null>(null);
   const [searchError, setSearchError] = useState("");
   const [clusterFilter, setClusterFilter] = useState<number | null>(null);
-  const { task, steps, stuck, progressPct } = useTaskPolling(taskId);
+  const { task, steps, stuck, progressPct, rate } = useTaskPolling(taskId);
   const [modelReady, setModelReady] = useState<boolean | null>(null);
   const [preparingModel, setPreparingModel] = useState(false);
   const [embeddingsDone, setEmbeddingsDone] = useState(false);
@@ -266,7 +266,7 @@ export default function ImagePipeline() {
           </>
         )}
 
-        <TaskMonitor task={task} steps={steps} stuck={stuck} progressPct={progressPct} running={running} />
+        <TaskMonitor rate={rate} task={task} steps={steps} stuck={stuck} progressPct={progressPct} running={running} />
       </div>
 
       {/* Tabs */}

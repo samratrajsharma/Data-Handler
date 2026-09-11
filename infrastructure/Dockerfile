@@ -163,6 +163,13 @@ ENV HF_HOME=/opt/hf-cache \
 
 WORKDIR /app
 
+# Build identity. CI passes the git tag (build-args: APP_VERSION=${{ github.ref_name }});
+# a local `docker build` with no --build-arg keeps the dev default. Declared
+# here, AFTER the expensive dependency layers, so a version bump invalidates
+# only the cheap tail of the build.
+ARG APP_VERSION=0.0.0-dev
+ENV APP_VERSION=${APP_VERSION}
+
 # Application source last: it changes on every commit, so keeping it after the
 # dependency layers means a code edit rebuilds only this one thin layer.
 # frontend/ is excluded by .dockerignore (it is built as its own image).

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import api from "../../shared/api/client";
 import "./DashboardLayout.css";
 
 type NavItem = { to: string; icon: string; label: string; end?: boolean };
@@ -97,6 +98,21 @@ function initialMode(path: string): Mode {
 
 export default function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(false);
+
+  // Build identity for the sidebar. Uses /api/v1/version rather than /health
+  // because only /api/* is reverse-proxied (nginx in prod, Vite in dev) — a
+  // fetch of /health would hit the SPA fallback and return index.html.
+  // Failure is silent by design: a missing version label must never blank the
+  // app shell, and an unreachable backend already surfaces everywhere else.
+  const [version, setVersion] = useState<string>("");
+  useEffect(() => {
+    api.get<{ version?: string }>("/version")
+      .then((r) => {
+        const v = r.data?.version;
+        if (v) setVersion(`v${String(v).replace(/^v/, "")}`);
+      })
+      .catch(() => {});
+  }, []);
   const [theme, setTheme] = useState<Theme>(currentTheme);
   const location = useLocation();
   const navigate = useNavigate();
@@ -199,6 +215,14 @@ export default function DashboardLayout() {
             )}
             {!collapsed && <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>}
           </button>
+          {/* Build identity, straight from /health. The backend reports the git
+              tag it was built from, so a screenshot of the sidebar is enough to
+              identify the exact build in a bug report. Hidden when collapsed. */}
+          {!collapsed && version && (
+            <div className="dash__version" title={`Data Handler ${version}`}>
+              {version}
+            </div>
+          )}
         </div>
       </aside>
 

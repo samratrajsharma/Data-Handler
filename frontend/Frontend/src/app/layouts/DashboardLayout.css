@@ -147,6 +147,18 @@
 .dash__theme:hover { color: var(--dash-text); background: var(--dash-surface-hover); }
 .dash--collapsed .dash__theme { justify-content: center; }
 
+/* Build identity. Quiet by design — present for bug reports, not competing
+   with navigation. Hidden entirely when the sidebar is collapsed. */
+.dash__version {
+  padding: 6px 12px 0;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--dash-text-muted);
+  user-select: text;
+}
+.dash--collapsed .dash__version { display: none; }
+
 /* ━━━ Main Content ━━━ */
 .dash__main {
   flex: 1;

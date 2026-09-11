@@ -175,7 +175,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Data Handler",
     description="Enterprise AI Operating System",
-    version="0.1.0",
+    version=settings.APP_VERSION,
     lifespan=lifespan,
 )
 
@@ -217,8 +217,20 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "datahandler",
-        "version": "0.1.0",
+        "version": settings.APP_VERSION,
     }
+
+
+@app.get("/api/v1/version", tags=["system"])
+async def version_info():
+    """Build identity, reachable from the browser.
+
+    Deliberately under /api/v1 rather than reusing /health: nginx only
+    reverse-proxies /api/ (frontend/nginx.conf) and the Vite dev server only
+    proxies /api, so a browser fetch of /health falls through to the SPA
+    index.html in both environments and never reaches FastAPI.
+    """
+    return {"version": settings.APP_VERSION, "service": "datahandler"}
 
 
 @app.get("/", tags=["system"])

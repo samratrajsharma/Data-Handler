@@ -40,7 +40,7 @@ export default function ExportModal({ datasetId, summary, onClose, onSummaryChan
   const [taskId, setTaskId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [exportResult, setExportResult] = useState<LatestExportResponse | null>(null);
-  const { task, steps, stuck, progressPct } = useTaskPolling(taskId);
+  const { task, steps, stuck, progressPct, rate } = useTaskPolling(taskId);
   const handledRef = useRef<string | null>(null);
 
   // Handle export completion exactly once per task id.
@@ -183,7 +183,7 @@ export default function ExportModal({ datasetId, summary, onClose, onSummaryChan
           ) : null}
         </div>
 
-        <TaskMonitor task={task} steps={steps} stuck={stuck} progressPct={progressPct} running={running} />
+        <TaskMonitor rate={rate} task={task} steps={steps} stuck={stuck} progressPct={progressPct} running={running} />
 
         {exportResult && (
           <div className="ann-export__result">

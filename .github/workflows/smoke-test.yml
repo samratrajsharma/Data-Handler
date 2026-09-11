@@ -75,6 +75,23 @@ jobs:
           curl -fsS http://localhost:8000/docs            > /dev/null && echo "  /docs OK"
           curl -fsS http://localhost:8000/api/v1/datasets > /dev/null && echo "  /api/v1/datasets OK"
           curl -fsS http://localhost:8000/api/v1/tasks    > /dev/null && echo "  /api/v1/tasks OK"
+          curl -fsS http://localhost:8000/api/v1/version  > /dev/null && echo "  /api/v1/version OK"
+
+      # Starlette matches routes in registration order, so a literal segment
+      # declared after a path parameter is unreachable. /{dataset_id}/clusters
+      # sat below /{dataset_id}/{asset_id} and returned 422 for its entire
+      # existence — the clusters UI never worked. Pin the ordering:
+      # a nonexistent dataset must give 404 (route matched, dataset missing),
+      # never 422 (route did not match, "clusters" parsed as a UUID).
+      - name: Assert literal routes are not shadowed by path params
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            http://localhost:8000/api/v1/images/00000000-0000-0000-0000-000000000000/clusters)
+          echo "  /images/{id}/clusters -> $code"
+          if [ "$code" = "422" ]; then
+            echo "::error::/clusters is shadowed by /{asset_id} again - move it above that route"
+            exit 1
+          fi
 
       # A crash-looping worker is invisible from the API side: the UI loads and
       # every background job queues forever. Ping it directly.

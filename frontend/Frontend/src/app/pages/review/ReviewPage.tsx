@@ -18,7 +18,7 @@ export default function ReviewPage() {
   const [reviewActions, setReviewActions] = useState<Array<{item_id: string; action: string; new_label?: string}>>([]);
   const [newAction, setNewAction] = useState({item_id: "", action: "approve", new_label: ""});
   const [datasetStatus, setDatasetStatus] = useState("");
-  const { task, steps, stuck, progressPct } = useTaskPolling(taskId);
+  const { task, steps, stuck, progressPct, rate } = useTaskPolling(taskId);
 
   useEffect(() => {
     datasetApi.list({ limit: 100 }).then((r) => {
@@ -133,7 +133,7 @@ export default function ReviewPage() {
             <button className="btn btn--primary" onClick={runQuality} disabled={!datasetId || running}>
               {running ? "Evaluating..." : "Evaluate Quality"}
             </button>
-            <TaskMonitor task={task} steps={steps} stuck={stuck} progressPct={progressPct} running={running} />
+            <TaskMonitor rate={rate} task={task} steps={steps} stuck={stuck} progressPct={progressPct} running={running} />
           </div>
           <div className="card">
             <div className="card-header"><h3>Quality Results</h3></div>

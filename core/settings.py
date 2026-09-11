@@ -76,5 +76,14 @@ class Settings(BaseSettings):
     # ── Runtime environment ───────────────────────────────────────────────
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
 
+    # ── Build identity ────────────────────────────────────────────────────
+    # Set at image build time from the git tag (Dockerfile ARG APP_VERSION,
+    # supplied by CI as the ref name). Surfaced in /health and the OpenAPI
+    # title so a bug report identifies the exact build it came from — the
+    # version used to be hardcoded "0.1.0" in app.py and never changed,
+    # which made "which version are you on?" unanswerable.
+    # Local builds leave the default.
+    APP_VERSION: str = "0.0.0-dev"
+
 
 settings = Settings()

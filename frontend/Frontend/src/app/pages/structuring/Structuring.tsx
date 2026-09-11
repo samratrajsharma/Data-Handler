@@ -52,7 +52,7 @@ export default function Structuring() {
   const [results, setResults] = useState<{result?: StructuringResult} | null>(null);
   const [running, setRunning] = useState(false);
   const [tab, setTab] = useState<"visual" | "steps" | "raw">("visual");
-  const { task, steps, stuck, progressPct } = useTaskPolling(taskId);
+  const { task, steps, stuck, progressPct, rate } = useTaskPolling(taskId);
   const [recs, setRecs] = useState<StructuringRecommendations | null>(null);
   const [beforePreview, setBeforePreview] = useState<{ columns: string[]; rows: string[][] } | null>(null);
   const [afterPreview, setAfterPreview] = useState<{ columns: string[]; rows: string[][] } | null>(null);
@@ -467,7 +467,7 @@ export default function Structuring() {
             )}
           </div>
 
-          <TaskMonitor task={task} steps={steps} stuck={stuck} progressPct={progressPct} running={running} />
+          <TaskMonitor rate={rate} task={task} steps={steps} stuck={stuck} progressPct={progressPct} running={running} />
           {running && progressPct >= 95 && (
             <p style={{fontSize: 11.5, color: "var(--dash-text-muted)", marginTop: 6, fontStyle: "italic"}}>
               Almost done — finalising the cleaned file and updating the dataset status. If this hangs for more than 30 seconds, hit Reset and try again.

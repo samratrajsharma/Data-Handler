@@ -103,7 +103,7 @@ export default function Labeling() {
   const [results, setResults] = useState<{ result?: { labeling?: LabelingReport } } | null>(null);
   const [running, setRunning] = useState(false);
   const [tab, setTab] = useState<"visual" | "rules-perf" | "raw">("visual");
-  const { task, steps, stuck, progressPct } = useTaskPolling(taskId);
+  const { task, steps, stuck, progressPct, rate } = useTaskPolling(taskId);
   const [previewing, setPreviewing] = useState(false);
   const [preview, setPreview] = useState<PreviewRulesResponse | null>(null);
   const [previewError, setPreviewError] = useState("");
@@ -698,7 +698,7 @@ export default function Labeling() {
           }}>{previewError}</div>
         )}
 
-        <TaskMonitor task={task} steps={steps} stuck={stuck} progressPct={progressPct} running={running} />
+        <TaskMonitor rate={rate} task={task} steps={steps} stuck={stuck} progressPct={progressPct} running={running} />
 
         {/* ── Rule preview / dry-run ── */}
         {preview && (

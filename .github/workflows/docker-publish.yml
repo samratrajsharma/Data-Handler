@@ -70,6 +70,11 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           target: ${{ matrix.target }}
+          # On a tag push github.ref_name is the tag itself (e.g. v0.1.6); on a
+          # manual dispatch it is the branch name. Either way the running app
+          # can report the exact build it came from via /health.
+          build-args: |
+            APP_VERSION=${{ github.ref_name }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

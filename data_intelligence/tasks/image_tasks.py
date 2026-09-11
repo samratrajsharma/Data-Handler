@@ -61,9 +61,15 @@ def generate_image_embeddings(self, dataset_id: str):
             total, dataset_id,
         )
 
-        # ── Step 2: Download images from MinIO in batches ───────────────
+        # ── Step 2: Make sure CLIP is loaded, reporting the download ─────
+        # Must happen BEFORE the image download loop. embed_images() loads the
+        # model lazily on first call, so without this the 609 MB fetch happened
+        # silently in the middle of the run with the bar frozen at 10%.
+        ensure_clip_model(celery_task_id, lo=0.05, hi=0.35)
+
+        # ── Step 3: Download images from MinIO in batches ───────────────
         update_task_progress(
-            db, celery_task_id, 0.1, f"Downloading {total} images from storage...",
+            db, celery_task_id, 0.4, f"Downloading {total} images from storage...",
         )
 
         from core.settings import settings
@@ -320,6 +326,81 @@ def run_image_clustering(self, dataset_id: str, min_cluster_size: int = 5):
 
 
 
+def ensure_clip_model(celery_task_id: str, lo: float = 0.05, hi: float = 0.35) -> None:
+    """Load CLIP, reporting download progress into the given band of the task bar.
+
+    WHY THIS EXISTS
+    `load_clip_model()` blocks for as long as the one-time 609 MB download takes
+    and says nothing while it does. `image.generate_embeddings` called it
+    indirectly (via embed_images) straight after setting progress to 0.1, so the
+    bar sat at 10% for several minutes with no message — indistinguishable from a
+    hung worker. Users clicked Generate, saw nothing, and clicked again; by then
+    the model was cached, so the second attempt appeared to be the one that
+    "worked". Only `image.prepare_model` reported the download, and only because
+    it duplicated this logic inline.
+
+    The watcher runs on its own DB session: sharing the caller's session across
+    threads raises "concurrent operations are not permitted" in SQLAlchemy.
+
+    Args:
+        lo/hi: progress fraction to map the download onto, so the caller keeps
+               the rest of its bar for its own work.
+    """
+    import threading
+    from core.settings import settings
+    from image_pipeline.clip_embedder import (
+        load_clip_model, expected_model_size, hf_cache_blobs_size,
+        hf_cache_baseline, clip_model_ready,
+    )
+
+    name = settings.CLIP_MODEL_NAME
+    already_cached = clip_model_ready(name)
+
+    if already_cached:
+        # Cheap path: nothing to download, just pay the load. No watcher needed.
+        load_clip_model(name)
+        return
+
+    try:
+        total = expected_model_size(name)
+    except Exception:
+        total = 0
+    try:
+        baseline = hf_cache_baseline(name)
+    except Exception:
+        baseline = 0
+
+    stop = threading.Event()
+
+    def _watch():
+        tdb = SyncSessionLocal()
+        try:
+            while not stop.is_set():
+                try:
+                    dl = max(0, hf_cache_blobs_size(name) - baseline)
+                    if total:
+                        frac = min(1.0, dl / total)
+                        msg = (f"Downloading CLIP model… {dl/1_000_000:.0f} / "
+                               f"{total/1_000_000:.0f} MB ({frac*100:.0f}%)")
+                    else:
+                        frac = 0.1
+                        msg = f"Downloading CLIP model… {dl/1_000_000:.0f} MB"
+                    update_task_progress(tdb, celery_task_id, lo + (hi - lo) * frac, msg)
+                except Exception:
+                    pass
+                stop.wait(1.0)
+        finally:
+            tdb.close()
+
+    watcher = threading.Thread(target=_watch, daemon=True)
+    watcher.start()
+    try:
+        load_clip_model(name)
+    finally:
+        stop.set()
+        watcher.join(timeout=3)
+
+
 @app.task(bind=True, name="image.prepare_model")
 def prepare_clip_model(self, dataset_id: str = None):
     """One-time: download (if needed) + load the CLIP model, reporting live
@@ -327,51 +408,17 @@ def prepare_clip_model(self, dataset_id: str = None):
     measured from the on-disk HF cache size; the watch thread uses its OWN db
     session so it never shares the main session (which is a concurrency error).
     """
-    import threading
     celery_task_id = self.request.id
     db = SyncSessionLocal()
     try:
         from core.settings import settings
-        from image_pipeline.clip_embedder import (
-            load_clip_model, expected_model_size, hf_cache_blobs_size,
-        )
         name = settings.CLIP_MODEL_NAME
         update_task_progress(db, celery_task_id, 0.02, "Preparing CLIP model…")
 
-        try:
-            total = expected_model_size(name)
-        except Exception:
-            total = 0
-
-        stop = threading.Event()
-
-        def _watch():
-            tdb = SyncSessionLocal()
-            try:
-                while not stop.is_set():
-                    try:
-                        dl = hf_cache_blobs_size(name)
-                        if total:
-                            frac = min(0.97, dl / total)
-                            msg = (f"Downloading model… {dl/1_000_000:.0f} / "
-                                   f"{total/1_000_000:.0f} MB ({frac*100:.0f}%)")
-                        else:
-                            frac = 0.1
-                            msg = f"Downloading model… {dl/1_000_000:.0f} MB"
-                        update_task_progress(tdb, celery_task_id, max(0.02, frac), msg)
-                    except Exception:
-                        pass
-                    stop.wait(1.0)
-            finally:
-                tdb.close()
-
-        watcher = threading.Thread(target=_watch, daemon=True)
-        watcher.start()
-        try:
-            load_clip_model(name)
-        finally:
-            stop.set()
-            watcher.join(timeout=3)
+        # Shared with image.generate_embeddings so the two cannot drift: this
+        # logic previously existed only here, which is exactly why the embedding
+        # task's silent download went unnoticed.
+        ensure_clip_model(celery_task_id, lo=0.02, hi=0.97)
 
         complete_task(db, celery_task_id, result={"ready": True, "model": name})
         logger.info("CLIP model ready.")

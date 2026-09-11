@@ -24,6 +24,17 @@
 }
 .tm-pct { font-weight: 700; color: var(--dash-text-secondary); }
 
+/* Right-hand cluster: transfer speed then percentage. Tabular numerals stop
+   the digits jittering as the values change every couple of seconds. */
+.tm-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.tm-rate { color: var(--dash-text-muted); }
+
 /* Step stream */
 .tm-steps {
   margin-top: 12px;

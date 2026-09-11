@@ -1,4 +1,5 @@
 import type { TaskStep } from "../../hooks/usePolling";
+import { formatRate } from "../../hooks/usePolling";
 import "./TaskMonitor.css";
 
 interface TaskLike {
@@ -13,6 +14,9 @@ interface Props {
   stuck: boolean;
   progressPct: number;
   running: boolean;
+  /** Transfer speed in bytes/sec, derived from the progress message. 0 when
+   *  the current step isn't a download (most tasks aren't). */
+  rate?: number;
 }
 
 function timeAgo(at: number): string {
@@ -25,9 +29,11 @@ function timeAgo(at: number): string {
  * steps happening in the worker, and a clear warning if the task is stuck
  * in the queue (no worker has picked it up).
  */
-export default function TaskMonitor({ task, steps, stuck, progressPct, running }: Props) {
+export default function TaskMonitor({ task, steps, stuck, progressPct, running, rate = 0 }: Props) {
   const failed = task?.status === "failed";
   if (!running && !failed) return null;
+
+  const speed = formatRate(rate);
 
   return (
     <div className="tm">
@@ -58,7 +64,13 @@ export default function TaskMonitor({ task, steps, stuck, progressPct, running }
                   ? "Queued — waiting for a worker…"
                   : "Processing…")}
             </span>
-            <span className="tm-pct">{progressPct}%</span>
+            <span className="tm-meta">
+              {/* Speed sits next to the percentage so a slow download reads as
+                  "slow link" rather than "frozen app" — that ambiguity is the
+                  whole reason a stalled pull felt like a hang. */}
+              {speed && <span className="tm-rate">{speed}</span>}
+              <span className="tm-pct">{progressPct}%</span>
+            </span>
           </div>
         </>
       )}

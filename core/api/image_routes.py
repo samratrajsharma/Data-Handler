@@ -476,6 +476,79 @@ async def get_gallery(
     )
 
 
+# ---------------------------------------------------------------------------
+# ROUTE ORDER IS LOAD-BEARING BELOW THIS LINE.
+#
+# Starlette matches routes in REGISTRATION order, not by specificity. Any
+# literal path segment that could also be read as a path parameter must be
+# declared BEFORE the parameterised route, or the parameterised one swallows it.
+#
+# `/{dataset_id}/clusters` used to be declared after `/{dataset_id}/{asset_id}`,
+# so every request for it bound asset_id="clusters", failed UUID coercion, and
+# returned 422. The endpoint was unreachable from the day it was written.
+#
+# Keep literal routes ("/clusters", "/gallery", "/model/...") above this marker.
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{dataset_id}/clusters")
+async def get_clusters(
+    dataset_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return clustering results: cluster sizes and assets per cluster."""
+    await _validate_dataset(db, dataset_id)
+
+    # Cluster size summary
+    summary_stmt = (
+        select(
+            ImageAsset.cluster_id,
+            func.count(ImageAsset.id).label("count"),
+        )
+        .where(
+            ImageAsset.dataset_id == dataset_id,
+            ImageAsset.cluster_id.is_not(None),
+        )
+        .group_by(ImageAsset.cluster_id)
+        .order_by(ImageAsset.cluster_id)
+    )
+    summary_result = await db.execute(summary_stmt)
+    cluster_summary = {row.cluster_id: row.count for row in summary_result}
+
+    # Assets grouped by cluster
+    assets_stmt = (
+        select(ImageAsset)
+        .where(
+            ImageAsset.dataset_id == dataset_id,
+            ImageAsset.cluster_id.is_not(None),
+        )
+        .order_by(ImageAsset.cluster_id, ImageAsset.created_at)
+    )
+    assets_result = await db.execute(assets_stmt)
+    assets = assets_result.scalars().all()
+
+    mc = _get_minio_client()
+    clusters: dict[int, list[ImageAssetResponse]] = {}
+    for asset in assets:
+        cid = asset.cluster_id
+        clusters.setdefault(cid, []).append(_asset_to_response(asset, mc))
+
+    # Count unclustered
+    unclustered_stmt = select(func.count(ImageAsset.id)).where(
+        ImageAsset.dataset_id == dataset_id,
+        ImageAsset.cluster_id.is_(None),
+    )
+    unclustered_count = (await db.execute(unclustered_stmt)).scalar() or 0
+
+    return {
+        "dataset_id": str(dataset_id),
+        "cluster_summary": cluster_summary,
+        "unclustered_count": unclustered_count,
+        "clusters": {str(k): v for k, v in clusters.items()},
+    }
+
+
 @router.get("/{dataset_id}/{asset_id}", response_model=ImageAssetResponse)
 async def get_image_detail(
     dataset_id: UUID,
@@ -579,64 +652,6 @@ async def trigger_clustering(
         celery_task_id=celery_task_id,
         message=f"Image clustering started for dataset {dataset_id}",
     )
-
-
-@router.get("/{dataset_id}/clusters")
-async def get_clusters(
-    dataset_id: UUID,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Return clustering results: cluster sizes and assets per cluster."""
-    await _validate_dataset(db, dataset_id)
-
-    # Cluster size summary
-    summary_stmt = (
-        select(
-            ImageAsset.cluster_id,
-            func.count(ImageAsset.id).label("count"),
-        )
-        .where(
-            ImageAsset.dataset_id == dataset_id,
-            ImageAsset.cluster_id.is_not(None),
-        )
-        .group_by(ImageAsset.cluster_id)
-        .order_by(ImageAsset.cluster_id)
-    )
-    summary_result = await db.execute(summary_stmt)
-    cluster_summary = {row.cluster_id: row.count for row in summary_result}
-
-    # Assets grouped by cluster
-    assets_stmt = (
-        select(ImageAsset)
-        .where(
-            ImageAsset.dataset_id == dataset_id,
-            ImageAsset.cluster_id.is_not(None),
-        )
-        .order_by(ImageAsset.cluster_id, ImageAsset.created_at)
-    )
-    assets_result = await db.execute(assets_stmt)
-    assets = assets_result.scalars().all()
-
-    mc = _get_minio_client()
-    clusters: dict[int, list[ImageAssetResponse]] = {}
-    for asset in assets:
-        cid = asset.cluster_id
-        clusters.setdefault(cid, []).append(_asset_to_response(asset, mc))
-
-    # Count unclustered
-    unclustered_stmt = select(func.count(ImageAsset.id)).where(
-        ImageAsset.dataset_id == dataset_id,
-        ImageAsset.cluster_id.is_(None),
-    )
-    unclustered_count = (await db.execute(unclustered_stmt)).scalar() or 0
-
-    return {
-        "dataset_id": str(dataset_id),
-        "cluster_summary": cluster_summary,
-        "unclustered_count": unclustered_count,
-        "clusters": {str(k): v for k, v in clusters.items()},
-    }
 
 
 @router.post("/{dataset_id}/search", response_model=list[SearchResult])

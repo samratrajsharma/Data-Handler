@@ -186,30 +186,95 @@ def expected_model_size(model_name: str = "openai/clip-vit-base-patch32") -> int
     return total
 
 
-def hf_cache_blobs_size(model_name: str = "openai/clip-vit-base-patch32") -> int:
-    """Current size (bytes) of the model's blobs in the local HF cache — grows
-    as the download proceeds (includes in-flight .incomplete files)."""
+def _hf_cache_roots() -> list:
+    """Every directory HuggingFace may write into, de-duplicated by real path.
+
+    De-duplication matters: docker-compose sets HF_HOME and TRANSFORMERS_CACHE
+    to the SAME directory (/opt/hf-cache), so a naive sum over both would report
+    double the bytes actually downloaded.
+    """
     import os
     from pathlib import Path
-    repo = "models--" + model_name.replace("/", "--")
-    bases = []
-    if os.environ.get("HF_HOME"):
-        bases.append(Path(os.environ["HF_HOME"]) / "hub")
-    if os.environ.get("TRANSFORMERS_CACHE"):
-        bases.append(Path(os.environ["TRANSFORMERS_CACHE"]) / "hub")
-    bases.append(Path("/opt/hf-cache/hub"))
-    bases.append(Path(os.path.expanduser("~/.cache/huggingface/hub")))
-    for base in bases:
-        blobs = base / repo / "blobs"
-        if blobs.exists():
-            size = 0
-            for f in blobs.iterdir():
+
+    candidates = []
+    for env in ("HF_HOME", "TRANSFORMERS_CACHE", "SENTENCE_TRANSFORMERS_HOME"):
+        if os.environ.get(env):
+            candidates.append(Path(os.environ[env]))
+    candidates.append(Path("/opt/hf-cache"))
+    candidates.append(Path(os.path.expanduser("~/.cache/huggingface")))
+
+    seen, roots = set(), []
+    for c in candidates:
+        try:
+            key = c.resolve()
+        except Exception:
+            key = c
+        if key in seen:
+            continue
+        seen.add(key)
+        roots.append(c)
+    return roots
+
+
+def _dir_bytes(path) -> int:
+    """Recursive byte total for a directory tree; missing tree counts as 0."""
+    import os
+    total = 0
+    try:
+        for dirpath, _dirnames, filenames in os.walk(path, onerror=lambda _e: None):
+            for fn in filenames:
                 try:
-                    size += f.stat().st_size
-                except Exception:
+                    total += os.stat(os.path.join(dirpath, fn)).st_size
+                except OSError:
                     pass
-            return size
-    return 0
+    except Exception:
+        pass
+    return total
+
+
+def hf_cache_blobs_size(model_name: str = "openai/clip-vit-base-patch32") -> int:
+    """Bytes currently on disk for this model's download, across every HF
+    storage backend.
+
+    WHY THIS IS NOT JUST `blobs/`:
+    the previous implementation summed `<root>/hub/models--X/blobs/` and
+    returned at the first root where that directory existed. Two things broke
+    it. First, it returned 0 from an existing-but-empty blobs dir without
+    checking the other roots. Second — and this is why the UI sat at
+    "0 / 609 MB" for the whole download — recent huggingface_hub versions use
+    the Xet backend, which stages content under `<root>/xet/` and only
+    materialises files under `blobs/` at the end. The counter therefore read 0
+    until the download finished, then jumped straight to done.
+
+    Walking the whole cache root instead of one subdirectory makes the
+    measurement independent of which backend HF chose. Callers pair this with a
+    baseline reading (see `hf_cache_baseline`) so a shared Xet store that
+    already holds other models is not counted as this download's progress.
+    """
+    repo = "models--" + model_name.replace("/", "--")
+    total = 0
+    for root in _hf_cache_roots():
+        # Classic layout: per-model repo dir (blobs/ + snapshots/ + *.incomplete)
+        total += _dir_bytes(root / "hub" / repo)
+        total += _dir_bytes(root / repo)
+        # Xet layout: a shared content-addressed store, not per-model. Measured
+        # in full and corrected by the caller's baseline.
+        total += _dir_bytes(root / "xet")
+    return total
+
+
+def hf_cache_baseline(model_name: str = "openai/clip-vit-base-patch32") -> int:
+    """Cache size before a download begins.
+
+    Subtracting this from later readings yields bytes added by THIS download,
+    which is what a progress bar should show. Without it, a shared Xet store
+    holding previously-fetched models would make progress start well above zero
+    — or exceed 100%.
+
+    Assumes one model download at a time, which holds here: `image.prepare_model`
+    is a single one-shot task.
+    """
+    return hf_cache_blobs_size(model_name)
 
 
 # ---------------------------------------------------------------------------

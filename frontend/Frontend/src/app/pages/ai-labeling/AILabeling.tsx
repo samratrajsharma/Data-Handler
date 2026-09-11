@@ -81,7 +81,7 @@ export default function AILabeling() {
   const [activeTopN, setActiveTopN] = useState(20);
   const [activeResults, setActiveResults] = useState<unknown>(null);
 
-  const { task, steps, stuck, progressPct } = useTaskPolling(taskId);
+  const { task, steps, stuck, progressPct, rate } = useTaskPolling(taskId);
 
   useEffect(() => {
     datasetApi.list({ limit: 100 }).then((r) => {
@@ -1050,7 +1050,7 @@ export default function AILabeling() {
             </>
           )}
 
-          <TaskMonitor task={task} steps={steps} stuck={stuck} progressPct={progressPct} running={running} />
+          <TaskMonitor rate={rate} task={task} steps={steps} stuck={stuck} progressPct={progressPct} running={running} />
         </div>
 
         {/* ───────────── Results ───────────── */}

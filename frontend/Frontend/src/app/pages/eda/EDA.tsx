@@ -213,7 +213,7 @@ export default function EDA() {
   const [running, setRunning] = useState(false);
   const [tab, setTab] = useState<"overview" | "columns" | "correlations" | "distributions" | "graphs" | "raw">("overview");
   const [showFormatMenu, setShowFormatMenu] = useState(false);
-  const { task, steps, stuck, progressPct } = useTaskPolling(taskId);
+  const { task, steps, stuck, progressPct, rate } = useTaskPolling(taskId);
 
   const [searchParams] = useSearchParams();
 
@@ -325,7 +325,7 @@ export default function EDA() {
           <button className="btn btn--primary" onClick={handleRun} disabled={!datasetId || running}>
             {running ? "Running..." : "Run EDA"}
           </button>
-          <TaskMonitor task={task} steps={steps} stuck={stuck} progressPct={progressPct} running={running} />
+          <TaskMonitor rate={rate} task={task} steps={steps} stuck={stuck} progressPct={progressPct} running={running} />
 
           {/* When EDA results exist: download or continue to Labeling */}
           {profileData && (
