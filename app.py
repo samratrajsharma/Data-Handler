@@ -17,7 +17,7 @@ _PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from core.settings import settings  # noqa: E402
-from core.database import init_db  # noqa: E402
+from core.db_bootstrap import ensure_schema  # noqa: E402
 
 # Standard routers (normal package imports)
 from core.api.task_routes import router as task_router  # noqa: E402
@@ -148,8 +148,17 @@ ingestion_router = sys.modules["dis_pkg.ingestion.api.routes"].router
 async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle hook."""
     # ── Startup ──────────────────────────────────────────────────────────
-    await init_db()
-    logger.info("Database tables initialised")
+    # Alembic owns the schema. This replaces the old `await init_db()`, which
+    # ran Base.metadata.create_all: that creates missing tables but never alters
+    # existing ones, so any model change after the first install was silently
+    # never applied. ensure_schema() migrates a fresh database and adopts one
+    # that create_all already built (see core/db_bootstrap.py).
+    #
+    # Runs in a thread because Alembic's API is synchronous and this is an async
+    # lifespan; blocking the loop here would stall the whole startup.
+    import anyio
+    action = await anyio.to_thread.run_sync(ensure_schema)
+    logger.info("Database schema ready (%s)", action)
 
     # Ensure the MinIO bucket exists (non-fatal if MinIO is unreachable)
     try:
@@ -160,7 +169,7 @@ async def lifespan(app: FastAPI):
         logger.warning("MinIO not available — skipping bucket init: %s", exc)
 
     # Single-user mode: no user table or seeding.
-    # Lifespan startup is just init_db + MinIO bucket ensure.
+    # Lifespan startup is just schema migration + MinIO bucket ensure.
 
     yield
 

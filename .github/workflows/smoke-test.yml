@@ -93,6 +93,29 @@ jobs:
             exit 1
           fi
 
+      # The baseline migration is hand-written (no database was available to
+      # autogenerate against), so it is verified rather than trusted: a clean
+      # Postgres has just been built by Alembic, and this compares the result
+      # with Base.metadata. Also catches any future migration that drifts from
+      # the models — the exact failure this phase set out to remove.
+      - name: Assert the migrated schema matches the models
+        run: |
+          docker compose -f infrastructure/docker-compose.yml exec -T api \
+            python scripts/check_schema_drift.py
+
+      # Alembic must be the sole schema owner. A fresh database should end up
+      # stamped at head; an empty alembic_version would mean create_all built
+      # the schema behind Alembic's back and migrations would never apply.
+      - name: Assert Alembic is at head
+        run: |
+          out=$(docker compose -f infrastructure/docker-compose.yml exec -T api \
+                  alembic current 2>&1 || true)
+          echo "$out"
+          echo "$out" | grep -q "head" || {
+            echo "::error::alembic current does not report head - the database was not migrated"
+            exit 1
+          }
+
       # A crash-looping worker is invisible from the API side: the UI loads and
       # every background job queues forever. Ping it directly.
       - name: Assert the Celery worker answers

@@ -1,4 +1,4 @@
-.PHONY: up down logs migrate test lint fmt typecheck clean build image-size install install-ml xpu-check
+.PHONY: up down logs migrate revision check-schema test lint fmt typecheck clean build image-size install install-ml xpu-check
 
 COMPOSE_FILE := infrastructure/docker-compose.yml
 
@@ -11,8 +11,19 @@ down:
 logs:
 	docker compose -f $(COMPOSE_FILE) logs -f
 
+# The app migrates itself at startup (core/db_bootstrap.py), so this is only
+# needed to apply a migration without restarting the API.
 migrate:
 	docker compose -f $(COMPOSE_FILE) exec api alembic upgrade head
+
+# Create a migration from model changes. Review the generated file before
+# committing — autogenerate misses server defaults and some constraint changes.
+revision:
+	docker compose -f $(COMPOSE_FILE) exec api alembic revision --autogenerate -m "$(m)"
+
+# Same check CI runs: does the migrated database still match the models?
+check-schema:
+	docker compose -f $(COMPOSE_FILE) exec api python scripts/check_schema_drift.py
 
 # pytest / ruff / mypy are no longer baked into the published image (they cost
 # ~80 MB and have no business in a runtime container). These targets install
