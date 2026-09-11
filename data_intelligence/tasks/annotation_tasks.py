@@ -1,7 +1,8 @@
 """
 Celery tasks for annotation export.
 Packages image annotations into standard formats (YOLO / COCO / VOC /
-classification) as a downloadable zip stored in MinIO.
+classification / CreateML / TensorFlow CSV / segmentation masks) as a
+downloadable zip stored in MinIO.
 """
 
 import logging
@@ -27,7 +28,8 @@ def export_image_annotations(
 
     Args:
         dataset_id: UUID of the dataset to export.
-        export_format: 'yolo' | 'coco' | 'voc' | 'classification'.
+        export_format: one of EXPORT_BUILDERS' keys — 'yolo', 'coco', 'voc',
+            'classification', 'createml', 'tfcsv', 'segmentation'.
         include_images: Copy the original images into the zip. Formats whose
             layout is image-centric (yolo/voc/classification) always include
             them.
@@ -87,6 +89,8 @@ def export_image_annotations(
                     "w": ann.w,
                     "h": ann.h,
                     "points": ann.points,
+                    # COCO RLE for kind == "mask"; None otherwise.
+                    "mask": ann.mask,
                 }
             )
 
@@ -136,6 +140,7 @@ def export_image_annotations(
 
         from labeling.annotation_exporter import (
             build_yolo, build_coco, build_voc, build_classification,
+            build_createml, build_tfcsv, build_segmentation_masks,
         )
 
         builders = {
@@ -143,6 +148,9 @@ def export_image_annotations(
             "coco": build_coco,
             "voc": build_voc,
             "classification": build_classification,
+            "createml": build_createml,
+            "tfcsv": build_tfcsv,
+            "segmentation": build_segmentation_masks,
         }
         builder = builders.get(export_format)
         if builder is None:
@@ -175,8 +183,12 @@ def export_image_annotations(
         bucket = settings.MINIO_BUCKET_NAME
         client = get_minio_client()
 
+        # These layouts are image-centric: the label files address images by a
+        # path inside the zip, so an export without them is unusable rather
+        # than merely smaller. 'segmentation' is here because a mask PNG is
+        # meaningless without the frame it masks.
         copy_images = include_images or export_format in (
-            "yolo", "voc", "classification",
+            "yolo", "voc", "classification", "createml", "tfcsv", "segmentation",
         )
 
         def _download_one(meta):

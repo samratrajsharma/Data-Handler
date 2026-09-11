@@ -1,4 +1,4 @@
-.PHONY: up down logs migrate revision check-schema test lint fmt typecheck clean build image-size install install-ml xpu-check
+.PHONY: up down logs migrate revision check-schema check-mask-codec check-ui test lint fmt typecheck clean build image-size install install-ml xpu-check
 
 COMPOSE_FILE := infrastructure/docker-compose.yml
 
@@ -24,6 +24,21 @@ revision:
 # Same check CI runs: does the migrated database still match the models?
 check-schema:
 	docker compose -f $(COMPOSE_FILE) exec api python scripts/check_schema_drift.py
+
+# The browser encodes segmentation masks and Python decodes them for export.
+# A divergence corrupts data without erroring, so the two are pinned to shared
+# vectors. Needs Node 22.6+ (type stripping); no npm install required.
+check-mask-codec:
+	node --experimental-strip-types scripts/check_mask_codec_parity.mjs
+	node --experimental-strip-types scripts/check_mask_paint.mjs
+
+# Guards for failures that are silent rather than loud: a help sheet listing a
+# shortcut the editor no longer implements, and a collapsed sidebar whose
+# labels still reserve width and push the icons out of view. Both are pure
+# source checks — no build, no npm install, no running stack.
+check-ui:
+	node scripts/check_shortcuts.mjs
+	node scripts/check_sidebar_rail.mjs
 
 # pytest / ruff / mypy are no longer baked into the published image (they cost
 # ~80 MB and have no business in a runtime container). These targets install

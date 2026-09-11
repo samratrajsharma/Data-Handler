@@ -16,7 +16,7 @@
   backdrop-filter: blur(6px);
 }
 .ds-header h1 { font-size: 26px; font-weight: 700; margin: 0; color: var(--dash-text); letter-spacing: -0.02em; }
-.ds-header p { color: var(--dash-text-secondary); font-size: 14px; margin: 4px 0 0; }
+.ds-header p { color: var(--dash-text-secondary); font-size: 15px; margin: 4px 0 0; }
 .ds-header__add { flex-shrink: 0; }
 
 /* "Add another dataset" tile — sits at the end of the dataset list so
@@ -55,10 +55,10 @@
   background: var(--tint);
 }
 .ds-add-tile__label {
-  font-size: 15px; font-weight: 600; color: inherit;
+  font-size: 16px; font-weight: 600; color: inherit;
 }
 .ds-add-tile__sub {
-  font-size: 12px; color: var(--dash-text-muted); margin-left: auto;
+  font-size: 13px; color: var(--dash-text-muted); margin-left: auto;
 }
 
 .ds-list { display: flex; flex-direction: column; gap: 14px; }
@@ -96,7 +96,7 @@
 .ds-card__text { flex: 1; min-width: 0; }
 
 .ds-card__name {
-  font-size: 16px; font-weight: 700;
+  font-size: 17px; font-weight: 700;
   color: var(--dash-text);
   letter-spacing: -0.01em;
   text-decoration: none;
@@ -104,7 +104,7 @@
 .ds-card__name:hover { color: var(--dash-primary); }
 
 .ds-card__meta {
-  font-size: 12.5px;
+  font-size: 13.5px;
   color: var(--dash-text-muted);
   margin-top: 2px;
   display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center;
@@ -112,7 +112,7 @@
 .ds-card__meta-sep { color: var(--dash-border); }
 
 .ds-card__open {
-  font-size: 12.5px; font-weight: 600;
+  font-size: 13.5px; font-weight: 600;
   color: var(--dash-primary);
   text-decoration: none;
   white-space: nowrap;
@@ -219,14 +219,14 @@
 }
 /* Table sizes to content so wide datasets force a horizontal scroll on the
    .ds-preview-scroll wrapper rather than getting columns squashed off-screen. */
-.ds-preview-table { border-collapse: collapse; font-size: 12px; min-width: max-content; width: max-content; }
+.ds-preview-table { border-collapse: collapse; font-size: 13px; min-width: max-content; width: max-content; }
 .ds-preview-table th {
   text-align: left;
   padding: 9px 12px;
   background: var(--tint);
   border-bottom: 1px solid var(--dash-border);
   font-weight: 700;
-  font-size: 10.5px;
+  font-size: 11.5px;
   color: var(--dash-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -296,7 +296,7 @@
 
 .ds-preview-foot {
   padding: 6px 4px 0;
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--dash-text-muted);
   text-align: right;
   display: flex;
@@ -309,7 +309,7 @@
   padding: 22px;
   text-align: center;
   color: var(--dash-text-muted);
-  font-size: 13px;
+  font-size: 14px;
   background: var(--dash-surface-hover);
   border: 1px dashed var(--dash-border);
   border-radius: 12px;
@@ -333,11 +333,11 @@
   width: 100%; height: 100%; object-fit: cover; display: block;
 }
 .ds-image-strip__more {
-  font-size: 12px; font-weight: 700;
+  font-size: 13px; font-weight: 700;
   color: var(--dash-text-secondary);
 }
 .ds-image-strip__placeholder {
-  font-size: 10.5px; color: var(--dash-text-muted);
+  font-size: 11.5px; color: var(--dash-text-muted);
 }
 
 /* ── Text document snippet list (text datasets' preview body) ── */
@@ -354,7 +354,7 @@
 .ds-doc + .ds-doc { border-top: 1px solid var(--dash-border); padding-top: 10px; }
 .ds-doc__name {
   display: block;
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--dash-text);
   white-space: nowrap;
@@ -363,7 +363,7 @@
 }
 .ds-doc__preview {
   margin: 3px 0 0;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.45;
   color: var(--dash-text-secondary);
   display: -webkit-box;
@@ -378,11 +378,11 @@
   gap: 10px;
   padding-top: 8px;
   border-top: 1px solid var(--dash-border);
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--dash-text-muted);
 }
 .ds-doc-foot__open {
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--dash-primary);
   text-decoration: none;
@@ -392,7 +392,7 @@
 
 /* Small hint line under a form control (e.g. the split-strategy select). */
 .ds-field-hint {
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--dash-text-muted);
   margin-top: 6px;
 }
@@ -406,7 +406,7 @@
 
 /* ── Pill statuses (status column was previously a badge) ── */
 .ds-status {
-  font-size: 11px; font-weight: 700;
+  font-size: 12.5px; font-weight: 700;
   padding: 3px 10px;
   border-radius: 100px;
   letter-spacing: 0.02em;
@@ -433,5 +433,5 @@
 .ds-gallery-tile { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .ds-gallery-tile img, .ds-gallery-tile__ph { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 8px; background: var(--dash-bg, var(--dash-bg)); display: block; }
 .ds-gallery-tile__ph { display: flex; align-items: center; justify-content: center; color: var(--dash-text-muted); }
-.ds-gallery-tile__name { font-size: 10px; color: var(--dash-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ds-gallery-loading { padding: 14px; text-align: center; color: var(--dash-text-muted); font-size: 12.5px; }
+.ds-gallery-tile__name { font-size: 11.5px; color: var(--dash-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-gallery-loading { padding: 14px; text-align: center; color: var(--dash-text-muted); font-size: 13.5px; }

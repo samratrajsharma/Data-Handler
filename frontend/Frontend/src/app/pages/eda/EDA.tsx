@@ -55,7 +55,7 @@ function CorrelationMatrix({ correlations }: { correlations: Record<string, Reco
   if (cols.length === 0) return <p className="eda-no-data">No numeric columns for correlation</p>;
   if (cols.length > 15) return (
     <div>
-      <p style={{fontSize: 12, color: "var(--dash-text-muted)", marginBottom: 8}}>Showing top 15 of {cols.length} columns</p>
+      <p style={{fontSize: 13, color: "var(--dash-text-muted)", marginBottom: 8}}>Showing top 15 of {cols.length} columns</p>
       <CorrelationMatrixInner cols={cols.slice(0, 15)} correlations={correlations} />
     </div>
   );
@@ -306,13 +306,13 @@ export default function EDA() {
             </select>
           </div>
           <div style={{display:"flex", flexDirection:"column", gap: 8, marginBottom: 16}}>
-            <label style={{display:"flex", alignItems:"center", gap: 8, fontSize: 13, color: "var(--dash-text-secondary)"}}>
+            <label style={{display:"flex", alignItems:"center", gap: 8, fontSize: 14, color: "var(--dash-text-secondary)"}}>
               <input type="checkbox" checked={runProfiling} onChange={(e) => setRunProfiling(e.target.checked)} /> Run Profiling
             </label>
-            <label style={{display:"flex", alignItems:"center", gap: 8, fontSize: 13, color: "var(--dash-text-secondary)"}}>
+            <label style={{display:"flex", alignItems:"center", gap: 8, fontSize: 14, color: "var(--dash-text-secondary)"}}>
               <input type="checkbox" checked={runEmbeddings} onChange={(e) => setRunEmbeddings(e.target.checked)} /> Run Embeddings
             </label>
-            <label style={{display:"flex", alignItems:"center", gap: 8, fontSize: 13, color: "var(--dash-text-secondary)"}}>
+            <label style={{display:"flex", alignItems:"center", gap: 8, fontSize: 14, color: "var(--dash-text-secondary)"}}>
               <input type="checkbox" checked={runClustering} onChange={(e) => setRunClustering(e.target.checked)} /> Run Clustering
             </label>
           </div>
@@ -370,8 +370,8 @@ export default function EDA() {
                           }}
                           onMouseEnter={(e) => e.currentTarget.style.background = "var(--dash-surface-hover)"}
                           onMouseLeave={(e) => e.currentTarget.style.background = "none"}>
-                          <div style={{fontSize: 13, fontWeight: 600, color: "var(--dash-text)"}}>{opt.label}</div>
-                          <div style={{fontSize: 11.5, color: "var(--dash-text-muted)", marginTop: 1}}>{opt.sub}</div>
+                          <div style={{fontSize: 14, fontWeight: 600, color: "var(--dash-text)"}}>{opt.label}</div>
+                          <div style={{fontSize: 12.5, color: "var(--dash-text-muted)", marginTop: 1}}>{opt.sub}</div>
                         </button>
                       ))}
                     </div>

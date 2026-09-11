@@ -194,7 +194,7 @@ export default function ImagePipeline() {
       <div className="card pipe" style={{marginBottom: 20}}>
         <div className="pipe__top">
           <div className="input-group" style={{marginBottom: 0, minWidth: 260}}>
-            <label style={{fontSize: 12}}>Image dataset</label>
+            <label style={{fontSize: 13}}>Image dataset</label>
             <select value={datasetId} onChange={(e) => { setDatasetId(e.target.value); setPage(0); setClusterFilter(null); setClusters(null); setEmbeddingsDone(false); }}>
               <option value="">Select image dataset</option>
               {datasets.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -203,7 +203,7 @@ export default function ImagePipeline() {
         </div>
 
         {!datasetId ? (
-          <p style={{marginTop: 12, fontSize: 13, color: "var(--dash-text-muted)"}}>
+          <p style={{marginTop: 12, fontSize: 14, color: "var(--dash-text-muted)"}}>
             {datasets.length === 0
               ? <>No image datasets yet. Create one on the{" "}
                   <Link to="/datasets" style={{color:"var(--dash-primary)", fontWeight:600}}>Datasets page</Link>
@@ -399,7 +399,7 @@ export default function ImagePipeline() {
         <div className="card">
           <div style={{display:"flex", gap: 12, marginBottom: 20, flexWrap: "wrap"}}>
             <input style={{flex: 1, minWidth: 200, padding: "10px 14px", background: "var(--dash-bg)", border: "1px solid var(--dash-border)",
-              borderRadius: 8, color: "var(--dash-text)", fontSize: 14}}
+              borderRadius: 8, color: "var(--dash-text)", fontSize: 15}}
               value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Describe the image you are looking for..." onKeyDown={(e) => e.key === "Enter" && handleSearch()} />
             <div className="input-group" style={{marginBottom: 0, width: 100}}>
@@ -416,7 +416,7 @@ export default function ImagePipeline() {
           </div>
           {searchError && (
             <div style={{padding: "12px 16px", background: "rgba(239,68,68,0.1)", borderRadius: 8, marginBottom: 16,
-              color: "var(--dash-text-muted)", fontSize: 13, border: "1px solid rgba(239,68,68,0.2)"}}>
+              color: "var(--dash-text-muted)", fontSize: 14, border: "1px solid rgba(239,68,68,0.2)"}}>
               {searchError}
             </div>
           )}

@@ -1,0 +1,130 @@
+/* Image review as a workflow board: one column per pipeline stage.
+   Columns are equal-width and independently scrollable so a stage holding
+   5,000 images does not push the others off screen. */
+
+.wb { display: flex; flex-direction: column; gap: 16px; }
+
+.wb__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.wb__title { margin: 0; font-size: 18px; font-weight: 700; color: var(--dash-text); }
+.wb__sub { margin: 4px 0 0; font-size: 13px; color: var(--dash-text-muted); }
+.wb__splits { font-variant-numeric: tabular-nums; }
+.wb__headActions { display: flex; gap: 8px; }
+
+/* auto-fit keeps all four columns visible on a wide screen and wraps to two
+   on a narrow one, rather than forcing a horizontal scroll on the page. */
+.wb__board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(258px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.wb-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 260px;
+  padding: 14px;
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  border-radius: 12px;
+}
+
+.wb-col__head { display: flex; align-items: center; gap: 8px; }
+.wb-col__dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.wb-col__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dash-text);
+}
+/* Count sits right, tabular so the columns line up as numbers change. */
+.wb-col__count {
+  margin-left: auto;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--dash-text);
+}
+.wb-col__blurb {
+  margin: 4px 0 10px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--dash-text-muted);
+}
+
+.wb-col__bar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--dash-bg);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.wb-col__bar span { display: block; height: 100%; border-radius: 999px; }
+
+.wb-col__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+.wb-thumb {
+  position: relative;
+  aspect-ratio: 1;
+  display: block;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--dash-bg);
+  border: 1px solid var(--dash-border);
+}
+.wb-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wb-thumb:hover { border-color: var(--accent); }
+.wb-thumb__ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dash-text-muted);
+}
+
+.wb-col__more {
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--dash-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.wb-col__empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--dash-text-muted);
+}
+
+/* Pushed to the bottom so every column's action sits on the same line,
+   however many thumbnails are above it. */
+.wb-col__foot { margin-top: auto; padding-top: 12px; }
+.wb-card__action {
+  display: inline-block;
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  color: var(--dash-text-secondary);
+  background: transparent;
+  border: 1px solid var(--dash-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.wb-card__action:hover:not(:disabled) { color: var(--accent-text); border-color: var(--accent); }
+.wb-card__action:disabled { opacity: 0.45; cursor: default; }

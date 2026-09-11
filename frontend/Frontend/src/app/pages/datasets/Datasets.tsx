@@ -559,7 +559,7 @@ export default function Datasets() {
                     title={`Delete "${d.name}"`}
                     aria-label={`Delete ${d.name}`}>
                     {deletingId === d.id ? (
-                      <span style={{fontSize: 11, fontWeight: 600}}>...</span>
+                      <span style={{fontSize: 12.5, fontWeight: 600}}>...</span>
                     ) : (
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -605,8 +605,8 @@ export default function Datasets() {
                         background: datasetType === opt.key ? "var(--dash-primary-dim)" : "#fff",
                         cursor: "pointer",
                       }}>
-                      <div style={{fontWeight: 700, fontSize: 13.5, color: "var(--dash-text)"}}>{opt.title}</div>
-                      <div style={{fontSize: 11.5, color: "var(--dash-text-muted)", marginTop: 2}}>{opt.sub}</div>
+                      <div style={{fontWeight: 700, fontSize: 14.5, color: "var(--dash-text)"}}>{opt.title}</div>
+                      <div style={{fontSize: 12.5, color: "var(--dash-text-muted)", marginTop: 2}}>{opt.sub}</div>
                     </button>
                   ))}
                 </div>
@@ -632,7 +632,7 @@ export default function Datasets() {
                     <label>Text files (TXT, MD)</label>
                     <input type="file" accept={TEXT_ACCEPT} multiple onChange={onFilesPicked} required />
                     {files.length > 0 && (
-                      <p style={{fontSize: 12, color: "var(--dash-text-muted)", marginTop: 8}}>
+                      <p style={{fontSize: 13, color: "var(--dash-text-muted)", marginTop: 8}}>
                         {files.length} file{files.length === 1 ? "" : "s"} selected
                       </p>
                     )}
@@ -662,7 +662,7 @@ export default function Datasets() {
                     </label>
                   </div>
                   {imageCount > 0 && (
-                    <p style={{fontSize: 12, color: "var(--dash-text-muted)", marginTop: 8}}>
+                    <p style={{fontSize: 13, color: "var(--dash-text-muted)", marginTop: 8}}>
                       {imageCount} image{imageCount === 1 ? "" : "s"} selected
                     </p>
                   )}
@@ -670,7 +670,7 @@ export default function Datasets() {
               )}
 
               {uploadMsg && (
-                <p style={{fontSize: 12.5, color: "var(--dash-primary)", marginBottom: 12}}>{uploadMsg}</p>
+                <p style={{fontSize: 13.5, color: "var(--dash-primary)", marginBottom: 12}}>{uploadMsg}</p>
               )}
 
               <div style={{display: "flex", gap: 12, justifyContent: "flex-end"}}>

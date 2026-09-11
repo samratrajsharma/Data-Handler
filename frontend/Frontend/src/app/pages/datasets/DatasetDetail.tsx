@@ -79,7 +79,7 @@ export default function DatasetDetail() {
       {/* ── Header ── */}
       <div className="page-header" style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap: "wrap", gap: 12}}>
         <div>
-          <p style={{marginBottom: 4}}><Link to="/datasets" style={{color:"var(--dash-primary)", fontSize: 13}}>&#8592; All Datasets</Link></p>
+          <p style={{marginBottom: 4}}><Link to="/datasets" style={{color:"var(--dash-primary)", fontSize: 14}}>&#8592; All Datasets</Link></p>
           <h1>{String(dataset.name)}</h1>
           {Boolean(dataset.description) && <p style={{color: "var(--dash-text-secondary)", maxWidth: 600}}>{String(dataset.description)}</p>}
         </div>
@@ -115,7 +115,7 @@ export default function DatasetDetail() {
         </div>
         <div className="dd-stat-card">
           <span className="dd-stat-card__label">Created</span>
-          <span className="dd-stat-card__value" style={{fontSize: 15}}>{new Date(String(dataset.created_at)).toLocaleDateString()}</span>
+          <span className="dd-stat-card__value" style={{fontSize: 16}}>{new Date(String(dataset.created_at)).toLocaleDateString()}</span>
         </div>
       </div>
 
@@ -199,7 +199,7 @@ export default function DatasetDetail() {
                 <div className="dd-version-detail__row"><span>Rows</span><span>{latestVersion.row_count?.toLocaleString() ?? "—"}</span></div>
                 <div className="dd-version-detail__row"><span>Uploaded</span><span>{new Date(latestVersion.created_at).toLocaleString()}</span></div>
                 {latestVersion.schema_hash && (
-                  <div className="dd-version-detail__row"><span>Schema Hash</span><span style={{fontSize: 11, fontFamily: "monospace"}}>{latestVersion.schema_hash.slice(0, 16)}...</span></div>
+                  <div className="dd-version-detail__row"><span>Schema Hash</span><span style={{fontSize: 12.5, fontFamily: "monospace"}}>{latestVersion.schema_hash.slice(0, 16)}...</span></div>
                 )}
               </div>
             ) : <div className="empty-state"><p>No versions uploaded yet</p></div>}
@@ -260,8 +260,8 @@ function PipelineStep({ name, done, result }: { name: string; done: boolean; res
       </div>
       {expanded && result && (
         <div className="dd-pipeline-step__body">
-          {Boolean(result.completed_at) && <p style={{fontSize: 12, color: "var(--dash-text-muted)", marginBottom: 8}}>Completed: {new Date(String(result.completed_at)).toLocaleString()}</p>}
-          <pre style={{fontSize: 11, color: "var(--dash-text-secondary)", overflow: "auto", maxHeight: 200, whiteSpace: "pre-wrap", background: "var(--dash-surface-hover)", padding: 10, borderRadius: 6}}>
+          {Boolean(result.completed_at) && <p style={{fontSize: 13, color: "var(--dash-text-muted)", marginBottom: 8}}>Completed: {new Date(String(result.completed_at)).toLocaleString()}</p>}
+          <pre style={{fontSize: 12.5, color: "var(--dash-text-secondary)", overflow: "auto", maxHeight: 200, whiteSpace: "pre-wrap", background: "var(--dash-surface-hover)", padding: 10, borderRadius: 6}}>
             {JSON.stringify(result.result || result, null, 2)}
           </pre>
         </div>

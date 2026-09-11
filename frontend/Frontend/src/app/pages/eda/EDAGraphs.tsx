@@ -128,7 +128,7 @@ function HoverTooltip({ hover, svgRect, containerRect }: {
       border: "1px solid var(--dash-border)",
       borderRadius: 8,
       padding: "6px 10px",
-      fontSize: 12.5,
+      fontSize: 13.5,
       lineHeight: 1.45,
       color: "var(--dash-text)",
       boxShadow: "0 4px 14px rgba(0,0,0,0.08)",
@@ -589,7 +589,7 @@ export default function EDAGraphs({ datasetId }: Props) {
                 border: `1px solid ${chartType === t.key ? "var(--brand-indigo)" : "var(--dash-border)"}`,
                 background: chartType === t.key ? "var(--dash-primary-dim)" : "var(--dash-surface)",
                 color: chartType === t.key ? "var(--dash-primary)" : "var(--dash-text-secondary)",
-                fontSize: 13, fontWeight: 600, cursor: "pointer",
+                fontSize: 14, fontWeight: 600, cursor: "pointer",
                 fontFamily: "inherit",
               }}>
               {t.label}
@@ -609,20 +609,20 @@ export default function EDAGraphs({ datasetId }: Props) {
           Download PNG
         </button>
       </div>
-      <p style={{fontSize: 12.5, color: "var(--dash-text-muted)", marginBottom: 14}}>
+      <p style={{fontSize: 13.5, color: "var(--dash-text-muted)", marginBottom: 14}}>
         {meta.sub}
       </p>
 
       {/* Column pickers */}
       <div style={{display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 6}}>
         <div style={{flex: 1, minWidth: 200}}>
-          <label style={{fontSize: 11.5, fontWeight: 700, color: "var(--dash-text-muted)",
+          <label style={{fontSize: 12.5, fontWeight: 700, color: "var(--dash-text-muted)",
             textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4}}>
             {needsY ? "X column" : "Column"}{spec.xKind === "numeric" ? " · numeric" : " · categorical"}
           </label>
           <select value={xCol} onChange={(e) => setXCol(e.target.value)} disabled={noColumns || noXCandidates}
             style={{width: "100%", padding: "9px 12px", border: "1px solid var(--dash-border)",
-              borderRadius: 10, fontSize: 14, fontFamily: "inherit"}}>
+              borderRadius: 10, fontSize: 15, fontFamily: "inherit"}}>
             <option value="">
               {noColumns ? "Select a dataset above" :
                 noXCandidates ? `No ${spec.xKind} columns in this dataset` :
@@ -633,13 +633,13 @@ export default function EDAGraphs({ datasetId }: Props) {
         </div>
         {needsY && (
           <div style={{flex: 1, minWidth: 200}}>
-            <label style={{fontSize: 11.5, fontWeight: 700, color: "var(--dash-text-muted)",
+            <label style={{fontSize: 12.5, fontWeight: 700, color: "var(--dash-text-muted)",
               textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4}}>
               Y column · numeric
             </label>
             <select value={yCol} onChange={(e) => setYCol(e.target.value)} disabled={noColumns || noYCandidates}
               style={{width: "100%", padding: "9px 12px", border: "1px solid var(--dash-border)",
-                borderRadius: 10, fontSize: 14, fontFamily: "inherit"}}>
+                borderRadius: 10, fontSize: 15, fontFamily: "inherit"}}>
               <option value="">
                 {noYCandidates ? "No numeric columns available" : "— pick a column —"}
               </option>
@@ -650,7 +650,7 @@ export default function EDAGraphs({ datasetId }: Props) {
       </div>
 
       {/* Per-chart requirement hint */}
-      <p style={{fontSize: 11.5, color: "var(--dash-text-muted)", marginTop: 0, marginBottom: 14,
+      <p style={{fontSize: 12.5, color: "var(--dash-text-muted)", marginTop: 0, marginBottom: 14,
         fontStyle: "italic"}}>
         {spec.requirement}
         {(noXCandidates || noYCandidates) && " — try a different chart type, or run structuring to convert categorical columns."}
@@ -668,7 +668,7 @@ export default function EDAGraphs({ datasetId }: Props) {
       <style>{`.g-empty { color: var(--dash-text-muted); font-size: 13.5px; padding: 30px; text-align: center; }`}</style>
 
       {ready && xValues.length > 0 && (
-        <p style={{fontSize: 11.5, color: "var(--dash-text-muted)", marginTop: 8, textAlign: "right"}}>
+        <p style={{fontSize: 12.5, color: "var(--dash-text-muted)", marginTop: 8, textAlign: "right"}}>
           Showing the first {xValues.length.toLocaleString()} rows.
         </p>
       )}

@@ -15,6 +15,7 @@ from core.models.annotation import (
     AnnotationClass,
     ImageAnnotation,
     ImageAnnotationState,
+    ImageTag,
     TextDocument,
     TextAnnotation,
 )
@@ -32,6 +33,7 @@ __all__ = [
     "AnnotationClass",
     "ImageAnnotation",
     "ImageAnnotationState",
+    "ImageTag",
     "TextDocument",
     "TextAnnotation",
 ]

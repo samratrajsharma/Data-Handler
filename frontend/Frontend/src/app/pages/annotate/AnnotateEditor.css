@@ -27,32 +27,37 @@
 
 /* ── Header ── */
 
+/* Chrome is deliberately tight: every pixel spent on header, class bar and
+   zoom bar is a pixel taken from the image, and the image is the work. Height
+   here dropped 50px -> 42px, and the class bar and zoom bar are similarly lean.
+   Controls keep 24px+ hit targets — this is a density pass, not a shrink. */
 .ann-header {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 14px;
+  gap: 10px;
+  padding: 5px 12px;
   border-bottom: 1px solid var(--dash-border);
   background: var(--dash-surface);
-  min-height: 50px;
+  min-height: 42px;
 }
 
 .ann-header__back {
   color: var(--dash-text-secondary);
   text-decoration: none;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
 }
-.ann-header__back:hover { color: var(--accent); }
+.ann-header__back:hover { color: var(--accent-text); }
 
 .ann-header__name {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--dash-text);
   letter-spacing: -0.01em;
-  max-width: 220px;
+  max-width: 240px;
+  min-width: 0;          /* may shrink below its text when the header is tight */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -64,33 +69,58 @@
   gap: 4px;
 }
 
-.ann-header__navbtn {
-  width: 24px;
-  height: 24px;
-  display: flex;
+/* Image navigation. Sized to be hit without aiming: 30px tall clears the 24px
+   minimum target, and Next carries a word as well as an arrow so it is findable
+   by reading rather than by hunting for a glyph. */
+.ann-navbtn {
+  height: 30px;
+  min-width: 30px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--dash-border);
-  border-radius: 6px;
-  background: transparent;
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid var(--dash-border-strong);
+  border-radius: 8px;
+  background: var(--dash-bg);
   color: var(--dash-text-secondary);
-  font-size: 15px;
+  font-size: 13px;
+  font-weight: 600;
   line-height: 1;
   cursor: pointer;
-  padding: 0 0 2px;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
 }
-.ann-header__navbtn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
-.ann-header__navbtn:disabled { opacity: 0.35; cursor: default; }
+.ann-navbtn:hover:not(:disabled) {
+  color: var(--accent-text);
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.ann-navbtn:disabled { opacity: 0.3; cursor: default; }
+
+/* Next is the loop. It gets accent weight at rest, not only on hover — a
+   control you press hundreds of times a session should never need to be
+   located. */
+.ann-navbtn--next {
+  padding: 0 10px 0 12px;
+  color: var(--accent-text);
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.ann-navbtn--next:hover:not(:disabled) {
+  color: var(--dash-on-primary);
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
 
 .ann-header__pos {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dash-text-muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .ann-save {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
   padding: 3px 8px;
@@ -98,11 +128,11 @@
   border: 1px solid var(--dash-border);
 }
 .ann-save--saved { color: var(--dash-text-muted); }
-.ann-save--saving { color: var(--accent); border-color: var(--accent); }
-.ann-save--dirty { color: var(--accent); border-style: dashed; border-color: var(--accent); }
+.ann-save--saving { color: var(--accent-text); border-color: var(--accent); }
+.ann-save--dirty { color: var(--accent-text); border-style: dashed; border-color: var(--accent); }
 
 .ann-status {
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
   padding: 3px 8px;
   border-radius: 999px;
@@ -120,7 +150,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dash-text-secondary);
   white-space: nowrap;
 }
@@ -131,7 +161,7 @@
   border: 1px solid var(--dash-border);
   border-radius: 6px;
   color: var(--dash-text);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .ann-approve:hover:not(:disabled) { color: #22c55e; border-color: #22c55e; }
@@ -145,6 +175,441 @@
   min-height: 0;
 }
 
+/* ━━━ Visual column order ━━━
+   The JSX renders tool rail → canvas → panel. Flex `order` puts them on screen
+   as panel → resizer → canvas → tool rail, which is what the layout actually
+   wants: classes on the left where they are read constantly, tools on the right
+   under the hand, and the canvas taking the middle instead of being squeezed
+   against it.
+
+   Done here rather than by moving JSX because that file is ~1600 lines with no
+   test coverage, and a large block move is exactly the kind of edit that breaks
+   something silently. Tradeoff: tab order follows the DOM, so it no longer
+   matches the visual order. Acceptable for a canvas tool driven by mouse and
+   single-key shortcuts; fix by moving the JSX if this component is refactored. */
+.ann-side     { order: 1; }
+.ann-resizer  { order: 2; }
+.ann-center   { order: 3; }
+.ann-toolbar  { order: 4; }
+
+/* ━━━ Panel resizer ━━━
+   8px of grab area, 1px of visible line. A true 1px target is unhittable.
+
+   The divider carries a visible grip, because a bare line reads as decoration:
+   nothing tells you it can be dragged until you happen to hover exactly on it.
+   The dots are always present (dimmed) and brighten on hover — discoverable at
+   rest, unmistakable on approach. */
+.ann-resizer {
+  flex: 0 0 8px;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* The hairline divider. */
+.ann-resizer::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 3px;
+  width: 1px;
+  background: var(--dash-border);
+  transition: background 0.12s ease, width 0.12s ease;
+}
+/* The grip: three stacked dots, drawn with a repeating gradient so there is no
+   extra element to position. */
+.ann-resizer::before {
+  content: "";
+  position: absolute;
+  width: 4px;
+  height: 26px;
+  border-radius: 2px;
+  background-image: radial-gradient(circle, var(--dash-text-muted) 1.1px, transparent 1.3px);
+  background-size: 4px 6px;
+  background-repeat: repeat-y;
+  opacity: 0.45;
+  transition: opacity 0.12s ease, background-image 0.12s ease;
+  pointer-events: none;   /* the parent owns the drag */
+  z-index: 1;
+}
+.ann-resizer:hover::after,
+.ann-resizer:active::after { background: var(--accent); width: 2px; }
+.ann-resizer:hover::before,
+.ann-resizer:active::before {
+  opacity: 1;
+  background-image: radial-gradient(circle, var(--accent) 1.3px, transparent 1.5px);
+}
+
+/* ━━━ Zoom bar ━━━ */
+.ann-zoombar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-top: 1px solid var(--dash-border);
+  background: var(--dash-surface);
+}
+.ann-zbtn {
+  height: 24px;
+  min-width: 24px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--dash-text-secondary);
+  background: transparent;
+  border: 1px solid var(--dash-border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.ann-zbtn:hover { color: var(--dash-text); border-color: var(--accent); }
+.ann-zbtn--wide { min-width: 52px; }
+.ann-zbtn--on {
+  color: var(--accent-text);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+/* Now a button (click to reset to 100%), styled to stay a readout: no border
+   until hovered, so the bar does not read as three buttons in a row. */
+.ann-zoombar__pct {
+  min-width: 56px;
+  height: 24px;
+  padding: 0 6px;
+  text-align: center;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;   /* stops width jitter while zooming */
+  color: var(--dash-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.ann-zoombar__pct:hover { color: var(--dash-text); border-color: var(--dash-border); }
+.ann-zoombar__sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--dash-border);
+}
+
+/* Overlay visibility toggle in its off state. */
+.ann-tool--off { color: var(--dash-text-muted); opacity: 0.65; }
+
+/* ━━━ Mask layer ━━━
+   Absolutely positioned over the image at its natural pixel size, scaled by the
+   stage's CSS transform along with everything else. image-rendering: pixelated
+   keeps mask edges crisp when zoomed in — smoothing would make it impossible to
+   see exactly which pixels are covered, which is the whole point of zooming
+   into a mask. */
+.ann-masklayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  image-rendering: pixelated;
+}
+
+/* ━━━ Brush size ━━━ */
+.ann-brushsize {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--dash-text-secondary);
+  white-space: nowrap;
+}
+.ann-brushsize input[type="range"] { width: 96px; accent-color: var(--accent); }
+.ann-brushsize b {
+  min-width: 38px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;   /* no jitter while dragging */
+  color: var(--dash-text);
+}
+
+/* ━━━ Approve all ━━━
+   Full width under the progress grid: it acts on the whole dataset, not the
+   current image, so it should not sit among the per-image controls. */
+/* Bulk approve — now a header action, not a sidebar one.
+   Green rather than accent-orange because it is the only control here whose
+   colour should say "finish", and because sitting a second orange button
+   beside Export would make the two most consequential actions in the header
+   look identical.
+
+   Filled at rest: it is the payoff action of the whole review loop, and a
+   ghost button next to a filled Export would read as secondary to it. Both
+   the fill and the label colour come from tokens, because the readable
+   combination inverts between themes. */
+.ann-approveall {
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--on-ok);
+  background: var(--ok);
+  border: 1px solid var(--ok);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+}
+.ann-approveall:hover:not(:disabled) {
+  background: var(--ok-hover);
+  border-color: var(--ok-hover);
+}
+/* Disabled is the normal state — most of the time nothing is waiting. It
+   drops to a bordered ghost rather than a dimmed green block, so an empty
+   queue does not leave a large dead green rectangle in the header. */
+.ann-approveall:disabled {
+  color: var(--dash-text-muted);
+  background: transparent;
+  border-color: var(--dash-border);
+  cursor: default;
+}
+
+/* Divider between per-image and dataset-level actions. */
+.ann-header__div {
+  width: 1px;
+  height: 20px;
+  flex: 0 0 auto;
+  background: var(--dash-border-strong);
+}
+
+/* ━━━ Tags ━━━
+   Neutral grey on purpose: classes are colour-coded and meaningful, tags are
+   workflow metadata. Giving tags colour too would blur the distinction the
+   panel is trying to draw. */
+.ann-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 8px;
+  min-height: 20px;
+}
+.ann-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 8px;
+  font-size: 12.5px;
+  color: var(--dash-text-secondary);
+  background: var(--dash-bg);
+  border: 1px solid var(--dash-border);
+  border-radius: 999px;
+}
+.ann-tag__x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--dash-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.ann-tag__x:hover { color: #ef4444; background: color-mix(in srgb, #ef4444 15%, transparent); }
+.ann-tag-add {
+  width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 12.5px;
+  color: var(--dash-text);
+  background: var(--dash-bg);
+  border: 1px solid var(--dash-border);
+  border-radius: 7px;
+}
+.ann-tag-add:focus { outline: none; border-color: var(--accent); }
+.ann-tag-add:disabled { opacity: 0.5; }
+
+/* ━━━ Pipeline stages ━━━
+   Images → Annotating → Dataset, with Rejected and All sitting outside the
+   chain. The arrows carry the meaning, so they are dimmer than the chips. */
+.ann-stage-wrap { display: inline-flex; align-items: center; gap: 6px; }
+.ann-stage__arrow {
+  color: var(--dash-text-muted);
+  opacity: 0.55;
+  font-size: 13px;
+  user-select: none;
+}
+.ann-fchip__n {
+  margin-left: 6px;
+  padding: 1px 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;   /* counts change as work progresses */
+  color: var(--dash-text-muted);
+  background: var(--dash-bg);
+  border-radius: 999px;
+}
+.ann-fchip--active .ann-fchip__n {
+  color: var(--dash-on-primary);
+  /* Translucent white well, not an opaque one: the chip beneath is already a
+     saturated orange, and a solid light pill on it reads as a second control
+     nested inside the first. */
+  background: rgba(0, 0, 0, 0.16);
+}
+
+/* ━━━ Display adjustments (brightness / contrast) ━━━
+   Opens upward from the zoom bar, which sits at the bottom of the canvas. */
+.ann-display { position: relative; }
+.ann-display__pop {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  width: 268px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+  z-index: 20;
+}
+.ann-display__row {
+  display: grid;
+  grid-template-columns: 70px 1fr 42px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--dash-text-secondary);
+}
+.ann-display__row input[type="range"] { width: 100%; accent-color: var(--accent); }
+.ann-display__row b {
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;   /* no width jitter while dragging */
+  text-align: right;
+  color: var(--dash-text);
+}
+.ann-display__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 2px;
+  border-top: 1px solid var(--dash-border);
+}
+.ann-display__note { font-size: 11.5px; color: var(--dash-text-muted); }
+
+/* ━━━ Copy previous labels ━━━ */
+.ann-side__titlerow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ann-copyprev {
+  font-size: 11.5px;
+  padding: 3px 7px;
+  color: var(--dash-text-secondary);
+  background: transparent;
+  border: 1px solid var(--dash-border);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ann-copyprev:hover:not(:disabled) { color: var(--accent-text); border-color: var(--accent); }
+.ann-copyprev:disabled { opacity: 0.4; cursor: default; }
+
+/* ━━━ Per-annotation class picker ━━━
+   Styled to read as text until hovered, so a list of ten rows doesn't look
+   like a form. flex:1 lets it take the row's spare width and truncate. */
+.ann-row__class {
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+  padding: 0 2px;
+  font-size: 12.5px;
+  color: var(--dash-text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.ann-row__class:hover { border-color: var(--dash-border); background: var(--dash-bg); }
+.ann-row__class:focus { outline: none; border-color: var(--accent); background: var(--dash-bg); }
+
+/* ━━━ Crop confirmation ━━━
+   Modal rather than inline: crop rewrites stored pixels and is the only action
+   in this editor Ctrl+Z cannot reverse, so it should interrupt. */
+.ann-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 20px;
+}
+.ann-modal__box {
+  width: min(460px, 100%);
+  padding: 18px;
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  border-radius: 12px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+}
+.ann-modal__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--dash-text);
+  margin-bottom: 10px;
+}
+.ann-modal__body { font-size: 13px; color: var(--dash-text-secondary); line-height: 1.55; }
+.ann-modal__body p { margin: 0 0 8px; }
+.ann-modal__body b { color: var(--dash-text); }
+.ann-modal__warn {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, #f59e0b 45%, var(--dash-border));
+  background: color-mix(in srgb, #f59e0b 10%, transparent);
+}
+.ann-modal__note { color: var(--dash-text-muted); font-size: 12.5px; }
+.ann-modal__note code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--dash-bg);
+  font-size: 11.5px;
+}
+.ann-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* Jump-to-image box. Narrow on purpose — it holds at most four digits, and the
+   number spinners only add width. */
+.ann-header__jump {
+  width: 54px;
+  height: 24px;
+  margin-left: 6px;
+  padding: 0 6px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--dash-text);
+  background: var(--dash-bg);
+  border: 1px solid var(--dash-border);
+  border-radius: 6px;
+}
+.ann-header__jump:focus { outline: none; border-color: var(--accent); }
+.ann-header__jump::-webkit-outer-spin-button,
+.ann-header__jump::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.ann-header__jump { -moz-appearance: textfield; appearance: textfield; }
+
 /* Tool rail */
 
 .ann-toolbar {
@@ -154,7 +619,8 @@
   align-items: center;
   gap: 4px;
   padding: 8px 0;
-  border-right: 1px solid var(--dash-border);
+  /* Rail is on the RIGHT now (flex order above), so its divider faces left. */
+  border-left: 1px solid var(--dash-border);
   background: var(--dash-surface);
 }
 
@@ -174,7 +640,7 @@
 .ann-tool:hover { background: var(--dash-surface-hover); color: var(--dash-text); }
 .ann-tool--active {
   background: var(--accent-dim);
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
 }
 
@@ -187,7 +653,7 @@
 
 .ann-toolbar__zoom {
   margin-top: auto;
-  font-size: 10px;
+  font-size: 11.5px;
   color: var(--dash-text-muted);
   font-variant-numeric: tabular-nums;
   writing-mode: vertical-rl;
@@ -210,7 +676,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
+  padding: 4px 10px;
   border-bottom: 1px solid var(--dash-border);
   background: var(--dash-surface);
   overflow-x: auto;
@@ -218,7 +684,7 @@
 }
 
 .ann-clsbar__label {
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--dash-text-muted);
   text-transform: uppercase;
@@ -234,7 +700,7 @@
   border: 1px solid var(--dash-border);
   background: transparent;
   color: var(--dash-text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -299,28 +765,30 @@
 }
 
 .ann-guard__title {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--dash-text);
   margin-bottom: 8px;
 }
 
 .ann-guard__hint {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--dash-text-secondary);
 }
 
 .ann-guard__arrow {
   display: inline-block;
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 18px;
   font-weight: 700;
   animation: ann-nudge 1s ease-in-out infinite;
 }
 
+/* Nudges LEFT, toward the classes panel. It used to travel +6px, which after
+   the panel moved was animating away from the thing it points at. */
 @keyframes ann-nudge {
   0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(6px); }
+  50% { transform: translateX(-6px); }
 }
 
 .ann-canvas__loading {
@@ -331,7 +799,7 @@
   justify-content: center;
   z-index: 2;
   color: var(--dash-text-muted);
-  font-size: 13px;
+  font-size: 14px;
   pointer-events: none;
 }
 
@@ -353,9 +821,11 @@
 /* ── Right panel ── */
 
 .ann-side {
+  /* flex-basis and width are set inline from React state (drag to resize);
+     these are the pre-hydration fallback only. The panel is on the LEFT now,
+     and the resizer draws the divider, so no border here. */
   flex: 0 0 300px;
   width: 300px;
-  border-left: 1px solid var(--dash-border);
   background: var(--dash-surface);
   overflow-y: auto;
   scrollbar-width: thin;
@@ -369,7 +839,7 @@
 }
 
 .ann-side__title {
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -381,7 +851,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -390,7 +860,7 @@
 }
 
 .ann-side__empty {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dash-text-muted);
   font-style: italic;
   padding: 4px 0;
@@ -429,7 +899,7 @@
 
 .ann-class__name {
   flex: 1;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--dash-text);
   overflow: hidden;
@@ -438,7 +908,7 @@
 }
 
 .ann-kbd {
-  font-size: 10px;
+  font-size: 11.5px;
   font-family: inherit;
   color: var(--dash-text-muted);
   border: 1px solid var(--dash-border);
@@ -450,7 +920,7 @@
 }
 
 .ann-class__count {
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--dash-text-muted);
   font-variant-numeric: tabular-nums;
   min-width: 14px;
@@ -476,7 +946,7 @@
   background: transparent;
   color: var(--dash-text-muted);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1;
   padding: 0;
 }
@@ -496,7 +966,7 @@
   border: 1px solid var(--dash-border);
   border-radius: 8px;
   color: var(--dash-text);
-  font-size: 12px;
+  font-size: 13px;
 }
 .ann-class-add input:focus { outline: none; border-color: var(--accent); }
 
@@ -543,7 +1013,7 @@
 
 .ann-row__name {
   flex: 1;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dash-text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -551,7 +1021,7 @@
 }
 
 .ann-row__size {
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--dash-text-muted);
   font-variant-numeric: tabular-nums;
   flex: 0 0 auto;
@@ -568,7 +1038,7 @@
   background: transparent;
   color: var(--dash-text-muted);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1;
   padding: 0;
   flex: 0 0 auto;
@@ -589,7 +1059,7 @@
   border: 1px solid var(--dash-border);
   background: transparent;
   color: var(--dash-text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -615,14 +1085,14 @@
 }
 
 .ann-progress__cell span {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--dash-text);
   font-variant-numeric: tabular-nums;
 }
 
 .ann-progress__cell label {
-  font-size: 10px;
+  font-size: 11.5px;
   color: var(--dash-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -630,7 +1100,7 @@
 
 .ann-progress__splits {
   margin-top: 8px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dash-text-secondary);
 }
 
@@ -645,30 +1115,48 @@
 .ann-strip__filters {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px 0;
+  gap: 7px;
+  padding: 8px 12px 2px;
 }
 
+/* Status filters. Previously 2px of vertical padding — a ~20px target holding
+   11px text against a 1px hairline. Hard to hit and hard to see, and they are
+   how you answer "what is left to do", the second most common question in the
+   tool after "what is this image".
+
+   Now 30px tall on a solid surface, and the ACTIVE chip is FILLED rather than
+   tinted: at a glance you can tell which subset you are looking at without
+   reading it, which matters because every other count on screen is relative to
+   that choice. */
 .ann-fchip {
-  padding: 2px 10px;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 13px;
   border-radius: 999px;
-  border: 1px solid var(--dash-border);
-  background: transparent;
+  border: 1px solid var(--dash-border-strong);
+  background: var(--dash-bg);
   color: var(--dash-text-secondary);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
 }
-.ann-fchip:hover { color: var(--dash-text); border-color: var(--dash-border-strong); }
-.ann-fchip--active {
-  background: var(--accent-dim);
-  color: var(--accent);
+.ann-fchip:hover {
+  color: var(--accent-text);
   border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.ann-fchip--active,
+.ann-fchip--active:hover {
+  background: var(--accent-strong);
+  color: var(--dash-on-primary);
+  border-color: var(--accent-strong);
 }
 
 .ann-strip__total {
   margin-left: auto;
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--dash-text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -733,7 +1221,7 @@
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.72);
   color: #fff;
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -742,7 +1230,7 @@
 }
 
 .ann-strip__empty {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dash-text-muted);
   padding: 20px 8px;
 }
@@ -751,12 +1239,39 @@
 
 .ann-export { max-width: 560px; }
 
+/* Grouped by task. auto-fit rather than a fixed 2-up so a group holding one
+   format doesn't leave a hole beside it. */
+.ann-export__group { margin-bottom: 12px; }
+.ann-export__group-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--dash-text-muted);
+  margin-bottom: 6px;
+}
+
 .ann-export__formats {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(164px, 1fr));
   gap: 8px;
-  margin-bottom: 14px;
 }
+
+/* Consequence of the selected format, so it is read before a job that can
+   take minutes — not after. */
+.ann-export__note {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--dash-text-secondary);
+  background: var(--dash-bg);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+}
+
+.ann-export__check--locked { cursor: default; opacity: 0.8; }
+.ann-export__req { font-size: 12.5px; color: var(--dash-text-muted); }
 
 .ann-export__fmt {
   display: flex;
@@ -776,13 +1291,13 @@
 }
 
 .ann-export__fmt-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--dash-text);
 }
 
 .ann-export__fmt-desc {
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--dash-text-muted);
 }
 
@@ -790,7 +1305,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--dash-text-secondary);
   margin-bottom: 10px;
   cursor: pointer;
@@ -805,7 +1320,7 @@
 }
 
 .ann-export__section-title {
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -825,7 +1340,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--dash-text-muted);
 }
 
@@ -836,12 +1351,12 @@
   border: 1px solid var(--dash-border);
   border-radius: 7px;
   color: var(--dash-text);
-  font-size: 13px;
+  font-size: 14px;
 }
 .ann-export__split-field input:focus { outline: none; border-color: var(--accent); }
 
 .ann-export__split-result {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dash-text-secondary);
 }
 
@@ -858,7 +1373,7 @@
 }
 
 .ann-export__result-line {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--dash-text);
 }
@@ -866,7 +1381,7 @@
 .ann-export__warnings {
   margin: 0;
   padding-left: 18px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dash-text-secondary);
 }
 
@@ -875,4 +1390,175 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 16px;
+}
+
+/* ── First-run guide ──────────────────────────────────────────────────────
+   Sits at the top of the left panel and deletes itself once its four steps
+   are done, so it costs a returning user nothing. Only the current step shows
+   its hint — four hints at once is a wall of text rather than an instruction. */
+
+.ann-guide__skip {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12.5px;
+  color: var(--dash-text-muted);
+  cursor: pointer;
+}
+.ann-guide__skip:hover { color: var(--dash-text-secondary); }
+
+.ann-guide__steps {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.ann-guide__step {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  color: var(--dash-text-muted);
+}
+.ann-guide__step--current {
+  background: var(--accent-dim);
+  color: var(--dash-text);
+}
+.ann-guide__step--done { color: var(--dash-text-muted); }
+.ann-guide__step--done .ann-guide__text b {
+  text-decoration: line-through;
+  opacity: 0.65;
+}
+
+/* Fixed-size marker so the text column stays aligned whether the marker is a
+   number or a tick. */
+.ann-guide__mark {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dash-text-muted);
+  border: 1px solid var(--dash-border);
+}
+.ann-guide__step--current .ann-guide__mark {
+  color: var(--dash-on-primary);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.ann-guide__step--done .ann-guide__mark {
+  /* White on #22c55e is 2.3:1 — a tick nobody can see. Dark green reads 7.3:1
+     and keeps the badge unmistakably "done". */
+  color: #06230f;
+  background: #22c55e;
+  border-color: #22c55e;
+}
+
+.ann-guide__text { display: flex; flex-direction: column; gap: 2px; }
+.ann-guide__text b { font-weight: 600; }
+.ann-guide__text em {
+  font-style: normal;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--dash-text-secondary);
+}
+
+.ann-guide__keys {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 9px;
+  padding: 6px;
+  font-size: 12.5px;
+  color: var(--dash-text-secondary);
+  background: transparent;
+  border: 1px solid var(--dash-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.ann-guide__keys:hover { color: var(--accent-text); border-color: var(--accent); }
+
+/* ── Shortcut sheet ───────────────────────────────────────────────────── */
+
+.ann-helpbtn {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dash-text-muted);
+  background: transparent;
+  border: 1px solid var(--dash-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.ann-helpbtn:hover { color: var(--accent-text); border-color: var(--accent); }
+
+.ann-help { max-width: 720px; width: min(720px, 92vw); }
+
+.ann-help__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ann-help__close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--dash-text-muted);
+  cursor: pointer;
+}
+.ann-help__close:hover { color: var(--dash-text); }
+
+/* Two columns on a normal window, one on a narrow one. The groups are short
+   enough that balancing them by hand would be churn every time one changes. */
+.ann-help__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px 26px;
+  margin-top: 14px;
+}
+
+.ann-help__gtitle {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--dash-text-muted);
+  margin: 8px 0 5px;
+}
+
+.ann-help__row {
+  display: grid;
+  grid-template-columns: 122px 1fr;
+  align-items: baseline;
+  gap: 10px;
+  padding: 2.5px 0;
+}
+.ann-help__keys { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.ann-help__plus { font-size: 11px; color: var(--dash-text-muted); margin: 0 1px; }
+.ann-help__label { font-size: 12.5px; color: var(--dash-text-secondary); }
+
+.ann-help__foot {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--dash-border);
+  font-size: 11.5px;
+  color: var(--dash-text-muted);
 }

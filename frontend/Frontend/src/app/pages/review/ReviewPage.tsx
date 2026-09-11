@@ -3,9 +3,14 @@ import { datasetApi } from "../../../shared/api/datasets";
 import { reviewApi } from "../../../shared/api/review";
 import { useTaskPolling } from "../../hooks/usePolling";
 import TaskMonitor from "../../components/TaskMonitor/TaskMonitor";
+import ImageWorkflowBoard from "./ImageWorkflowBoard";
 
 export default function ReviewPage() {
   const [datasets, setDatasets] = useState<Array<{id:string; name:string}>>([]);
+  // Image datasets get the workflow board instead of the tabular tabs. They
+  // used to be filtered out of this page entirely, which left step 3 of the
+  // image workflow pointing at an empty dropdown.
+  const [imageDatasets, setImageDatasets] = useState<Array<{id:string; name:string}>>([]);
   const [datasetId, setDatasetId] = useState("");
   const [tab, setTab] = useState<"quality" | "review" | "export">("quality");
   const [qualityResult, setQualityResult] = useState<unknown>(null);
@@ -22,7 +27,9 @@ export default function ReviewPage() {
 
   useEffect(() => {
     datasetApi.list({ limit: 100 }).then((r) => {
-      setDatasets((Array.isArray(r.data) ? r.data : r.data.datasets || []).filter((d: {source_type?: string}) => d.source_type !== "image" && d.source_type !== "text"));
+      const all = (Array.isArray(r.data) ? r.data : r.data.datasets || []) as Array<{id:string; name:string; source_type?: string}>;
+      setDatasets(all.filter((d) => d.source_type !== "image" && d.source_type !== "text"));
+      setImageDatasets(all.filter((d) => d.source_type === "image"));
     }).catch(() => {});
   }, []);
 
@@ -45,7 +52,20 @@ export default function ReviewPage() {
     reviewApi.getExport(datasetId).then((r) => setExportResult(r.data)).catch(() => {});
   };
 
-  useEffect(() => { if (datasetId) loadResults(); }, [datasetId]);
+  // The review API is the tabular rule-engine path — quality scores over rows,
+  // row-level approve/reject. Firing it for an image dataset is three requests
+  // that can only fail. Results from a previously selected tabular dataset are
+  // cleared so they cannot leak back when switching between the two kinds.
+  useEffect(() => {
+    if (!datasetId) return;
+    if (imageDatasets.some((d) => d.id === datasetId)) {
+      setQualityResult(null);
+      setReviewStatus(null);
+      setExportResult(null);
+      return;
+    }
+    loadResults();
+  }, [datasetId, imageDatasets]);
 
   const runQuality = async () => {
     if (!datasetId) return;
@@ -90,11 +110,17 @@ export default function ReviewPage() {
     } catch { alert("Failed"); }
   };
 
+  const selectedImage = imageDatasets.find((d) => d.id === datasetId);
+
   return (
     <div>
       <div className="page-header">
         <h1>Review & Export</h1>
-        <p>Evaluate quality, review labels, and export datasets</p>
+        <p>
+          {selectedImage
+            ? "See where every image sits in the pipeline, approve what is ready, and export the dataset"
+            : "Evaluate quality, review labels, and export datasets"}
+        </p>
       </div>
 
       <div className="card" style={{marginBottom: 20}}>
@@ -103,10 +129,21 @@ export default function ReviewPage() {
             <label>Dataset</label>
             <select value={datasetId} onChange={(e) => setDatasetId(e.target.value)}>
               <option value="">Select a dataset</option>
-              {datasets.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              {/* Grouped because the two kinds open different tools: image
+                  datasets get the workflow board, tabular ones the tabs. */}
+              {imageDatasets.length > 0 && (
+                <optgroup label="Image">
+                  {imageDatasets.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </optgroup>
+              )}
+              {datasets.length > 0 && (
+                <optgroup label="Tabular">
+                  {datasets.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </optgroup>
+              )}
             </select>
           </div>
-          {reviewStatus && (
+          {reviewStatus && !selectedImage && (
             <div style={{display:"flex", gap: 8}}>
               <span className="badge badge--info">Reviewed: {String(reviewStatus.total_reviewed || 0)}</span>
               <span className="badge badge--success">Approved: {String(reviewStatus.approved || 0)}</span>
@@ -116,13 +153,21 @@ export default function ReviewPage() {
         </div>
       </div>
 
+      {/* Image datasets: the pipeline board. Row-level quality scoring and
+          typing item IDs are tabular concepts and do not apply here. */}
+      {selectedImage && (
+        <ImageWorkflowBoard datasetId={selectedImage.id} datasetName={selectedImage.name} />
+      )}
+
+      {!selectedImage && (
       <div className="tabs">
         <button className={`tab ${tab === "quality" ? "tab--active" : ""}`} onClick={() => setTab("quality")}>Quality Eval</button>
         <button className={`tab ${tab === "review" ? "tab--active" : ""}`} onClick={() => setTab("review")}>Review Actions</button>
         <button className={`tab ${tab === "export" ? "tab--active" : ""}`} onClick={() => setTab("export")}>Export</button>
       </div>
+      )}
 
-      {tab === "quality" && (
+      {!selectedImage && tab === "quality" && (
         <div className="two-col">
           <div className="card">
             <div className="card-header"><h3>Run Quality Evaluation</h3></div>
@@ -138,7 +183,7 @@ export default function ReviewPage() {
           <div className="card">
             <div className="card-header"><h3>Quality Results</h3></div>
             {qualityResult ? (
-              <pre style={{fontSize: 12, color: "var(--dash-text-secondary)", overflow: "auto", maxHeight: 400, whiteSpace: "pre-wrap"}}>
+              <pre style={{fontSize: 13, color: "var(--dash-text-secondary)", overflow: "auto", maxHeight: 400, whiteSpace: "pre-wrap"}}>
                 {JSON.stringify(qualityResult, null, 2)}
               </pre>
             ) : <div className="empty-state"><h3>No quality data yet</h3></div>}
@@ -146,7 +191,7 @@ export default function ReviewPage() {
         </div>
       )}
 
-      {tab === "review" && (
+      {!selectedImage && tab === "review" && (
         <div className="card">
           <div className="card-header">
             <h3>Review Actions</h3>
@@ -193,10 +238,10 @@ export default function ReviewPage() {
             </div>
           )}
           <div style={{marginTop: 20, paddingTop: 20, borderTop: "1px solid var(--dash-border)"}}>
-            <h3 style={{fontSize: 14, marginBottom: 12}}>Update Dataset Status</h3>
+            <h3 style={{fontSize: 15, marginBottom: 12}}>Update Dataset Status</h3>
             <div style={{display:"flex", gap: 12}}>
               <select value={datasetStatus} onChange={(e) => setDatasetStatus(e.target.value)}
-                style={{padding: "8px 12px", background: "var(--dash-bg)", border: "1px solid var(--dash-border)", borderRadius: 8, color: "var(--dash-text)", fontSize: 13}}>
+                style={{padding: "8px 12px", background: "var(--dash-bg)", border: "1px solid var(--dash-border)", borderRadius: 8, color: "var(--dash-text)", fontSize: 14}}>
                 <option value="">Select status</option>
                 <option value="labeled">Labeled</option>
                 <option value="reviewed">Reviewed</option>
@@ -208,7 +253,7 @@ export default function ReviewPage() {
         </div>
       )}
 
-      {tab === "export" && (
+      {!selectedImage && tab === "export" && (
         <div className="two-col">
           <div className="card">
             <div className="card-header"><h3>Export Dataset</h3></div>
@@ -228,7 +273,7 @@ export default function ReviewPage() {
           <div className="card">
             <div className="card-header"><h3>Export Result</h3></div>
             {exportResult ? (
-              <pre style={{fontSize: 12, color: "var(--dash-text-secondary)", overflow: "auto", maxHeight: 300, whiteSpace: "pre-wrap"}}>
+              <pre style={{fontSize: 13, color: "var(--dash-text-secondary)", overflow: "auto", maxHeight: 300, whiteSpace: "pre-wrap"}}>
                 {JSON.stringify(exportResult, null, 2)}
               </pre>
             ) : <div className="empty-state"><h3>No export yet</h3></div>}

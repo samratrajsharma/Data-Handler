@@ -25,6 +25,24 @@ export const imageApi = {
     api.post(`/images/${datasetId}/cluster`, { min_cluster_size: min_cluster_size || 5 }),
   getClusters: (datasetId: string) =>
     api.get(`/images/${datasetId}/clusters`),
+  /** Crop in place. DESTRUCTIVE: replaces the stored original, remaps
+   *  annotations into the new frame, and deletes any that fall outside it.
+   *  The box is normalized 0..1 against the current frame. The untouched
+   *  original is copied to `_originals/` server-side before the overwrite. */
+  crop: (
+    datasetId: string,
+    assetId: string,
+    box: { x: number; y: number; w: number; h: number }
+  ) =>
+    api.post<{
+      asset_id: string;
+      width: number;
+      height: number;
+      annotations_kept: number;
+      annotations_dropped: number;
+      original_backup_path: string | null;
+    }>(`/images/${datasetId}/${assetId}/crop`, box),
+
   modelStatus: () => api.get(`/images/model/status`),
   prepareModel: (datasetId: string) =>
     api.post(`/images/model/prepare`, null, { params: { dataset_id: datasetId } }),

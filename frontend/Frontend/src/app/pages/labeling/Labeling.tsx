@@ -476,7 +476,7 @@ export default function Labeling() {
               </span>
               <span className="label-rule-row__num">{i + 1}</span>
               <div style={{flex: 1, display: "flex", gap: 8, alignItems: "center"}}>
-                <span style={{fontSize: 12.5, color: "var(--dash-text-muted)", whiteSpace: "nowrap"}}>
+                <span style={{fontSize: 13.5, color: "var(--dash-text-muted)", whiteSpace: "nowrap"}}>
                   When
                   {rule.conditions.length > 1 && (
                     <>
@@ -484,7 +484,7 @@ export default function Labeling() {
                       <select value={rule.logic}
                         onChange={(e) => updateRuleLogic(i, e.target.value as "and" | "or")}
                         style={{display: "inline-block", width: "auto", padding: "2px 6px",
-                          fontSize: 12, marginLeft: 2, marginRight: 2,
+                          fontSize: 13, marginLeft: 2, marginRight: 2,
                           border: "1px solid var(--dash-border)", borderRadius: 6}}>
                         <option value="and">ALL</option>
                         <option value="or">ANY</option>
@@ -494,12 +494,12 @@ export default function Labeling() {
                   )}
                   {rule.conditions.length <= 1 && " the condition matches,"}
                 </span>
-                <span style={{fontSize: 12.5, color: "var(--dash-text-muted)"}}>label as</span>
+                <span style={{fontSize: 13.5, color: "var(--dash-text-muted)"}}>label as</span>
                 <input
                   placeholder="label name"
                   value={rule.label}
                   onChange={(e) => updateRuleLabel(i, e.target.value)}
-                  style={{flex: 1, maxWidth: 220, padding: "6px 10px", fontSize: 13,
+                  style={{flex: 1, maxWidth: 220, padding: "6px 10px", fontSize: 14,
                     border: `1px solid ${rule.label ? "var(--dash-text)" : "var(--dash-border)"}`,
                     borderRadius: 8, fontWeight: 600}}
                 />
@@ -600,7 +600,7 @@ export default function Labeling() {
                               value={low}
                               onChange={(e) => updateCondition(i, ci, "value", `${e.target.value},${high}`)}
                               inputMode="decimal" style={{width: "50%", minWidth: 0}} />
-                            <span style={{fontSize: 12, color: "var(--dash-text-muted)"}}>–</span>
+                            <span style={{fontSize: 13, color: "var(--dash-text-muted)"}}>–</span>
                             <input
                               placeholder={hi !== undefined ? `max (≤ ${hi})` : "max"}
                               value={high}
@@ -652,7 +652,7 @@ export default function Labeling() {
                           {control}
                           {hint && (
                             <p style={{
-                              fontSize: 11, color: "var(--dash-text-muted)",
+                              fontSize: 12.5, color: "var(--dash-text-muted)",
                               margin: "4px 0 0", fontStyle: "italic", lineHeight: 1.3,
                             }}>{hint}</p>
                           )}
@@ -694,7 +694,7 @@ export default function Labeling() {
           <div style={{
             marginTop: 12, padding: "10px 12px",
             background: "rgba(239,68,68,0.08)", color: "var(--dash-text-muted)",
-            border: "1px solid rgba(239,68,68,0.25)", borderRadius: 8, fontSize: 12.5,
+            border: "1px solid rgba(239,68,68,0.25)", borderRadius: 8, fontSize: 13.5,
           }}>{previewError}</div>
         )}
 
@@ -708,24 +708,24 @@ export default function Labeling() {
             background: "var(--dash-primary-dim)",
           }}>
             <div style={{display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8}}>
-              <strong style={{fontSize: 13.5, color: "var(--dash-text)"}}>
+              <strong style={{fontSize: 14.5, color: "var(--dash-text)"}}>
                 Dry-run preview
               </strong>
-              <span style={{fontSize: 11.5, color: "var(--dash-text-muted)"}}>
+              <span style={{fontSize: 12.5, color: "var(--dash-text-muted)"}}>
                 Sample of {preview.sample_size.toLocaleString()} of {preview.total_rows.toLocaleString()} rows
               </span>
             </div>
             <div style={{display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 12}}>
               <div style={{background: "#fff", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--dash-border)"}}>
-                <div style={{fontSize: 11.5, color: "var(--dash-text-muted)"}}>Would label</div>
+                <div style={{fontSize: 12.5, color: "var(--dash-text-muted)"}}>Would label</div>
                 <div style={{fontSize: 18, fontWeight: 700, color: "var(--dash-text)"}}>{preview.report.labeled_count}</div>
               </div>
               <div style={{background: "#fff", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--dash-border)"}}>
-                <div style={{fontSize: 11.5, color: "var(--dash-text-muted)"}}>Unlabeled</div>
+                <div style={{fontSize: 12.5, color: "var(--dash-text-muted)"}}>Unlabeled</div>
                 <div style={{fontSize: 18, fontWeight: 700, color: "var(--dash-text)"}}>{preview.report.unlabeled_count}</div>
               </div>
               <div style={{background: "#fff", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--dash-border)"}}>
-                <div style={{fontSize: 11.5, color: "var(--dash-text-muted)"}}>Conflicts</div>
+                <div style={{fontSize: 12.5, color: "var(--dash-text-muted)"}}>Conflicts</div>
                 <div style={{fontSize: 18, fontWeight: 700, color: preview.report.conflict_count > 0 ? "var(--dash-text-muted)" : "var(--dash-text)"}}>
                   {preview.report.conflict_count}
                 </div>
@@ -745,23 +745,23 @@ export default function Labeling() {
                     border: "1px solid var(--dash-border)",
                   }}>
                     <div style={{display: "flex", justifyContent: "space-between", alignItems: "baseline"}}>
-                      <span style={{fontSize: 12.5, fontWeight: 600, color: "var(--dash-text)"}}>
+                      <span style={{fontSize: 13.5, fontWeight: 600, color: "var(--dash-text)"}}>
                         Rule {i + 1} → <span className="badge badge--info">{rule.label}</span>
                         <span style={{color: "var(--dash-text-muted)", fontWeight: 400, marginLeft: 6}}>
                           {ruleSummary(rule)}
                         </span>
                       </span>
-                      <span style={{fontSize: 12.5, color: stat.matches === 0 ? "var(--dash-text-muted)" : "var(--dash-text)", fontWeight: 700}}>
+                      <span style={{fontSize: 13.5, color: stat.matches === 0 ? "var(--dash-text-muted)" : "var(--dash-text)", fontWeight: 700}}>
                         {stat.matches} match{stat.matches === 1 ? "" : "es"} ({pct}%)
                       </span>
                     </div>
                     {samples.length > 0 && (
                       <details style={{marginTop: 6}}>
-                        <summary style={{fontSize: 11.5, color: "var(--dash-primary)", cursor: "pointer"}}>
+                        <summary style={{fontSize: 12.5, color: "var(--dash-primary)", cursor: "pointer"}}>
                           Show {samples.length} sample {samples.length === 1 ? "row" : "rows"}
                         </summary>
                         <div style={{marginTop: 6, overflowX: "auto"}}>
-                          <table className="ds-preview-table" style={{fontSize: 11.5}}>
+                          <table className="ds-preview-table" style={{fontSize: 12.5}}>
                             <thead>
                               <tr>{preview.columns.slice(0, 6).map((c) => <th key={c}>{c}</th>)}</tr>
                             </thead>
@@ -781,7 +781,7 @@ export default function Labeling() {
                       </details>
                     )}
                     {stat.matches === 0 && samples.length === 0 && (
-                      <p style={{fontSize: 11.5, color: "var(--dash-text-muted)", margin: "4px 0 0", fontStyle: "italic"}}>
+                      <p style={{fontSize: 12.5, color: "var(--dash-text-muted)", margin: "4px 0 0", fontStyle: "italic"}}>
                         No rows matched in the sample — check the column, operator, and value.
                       </p>
                     )}
@@ -792,7 +792,7 @@ export default function Labeling() {
             {preview.report.warnings && preview.report.warnings.length > 0 && (
               <div style={{marginTop: 10}}>
                 {preview.report.warnings.map((w, i) => (
-                  <div key={i} className="label-warning" style={{fontSize: 11.5}}>&#9888; {w}</div>
+                  <div key={i} className="label-warning" style={{fontSize: 12.5}}>&#9888; {w}</div>
                 ))}
               </div>
             )}
@@ -907,7 +907,7 @@ export default function Labeling() {
 
           {/* ── Raw ── */}
           {tab === "raw" && (
-            <pre style={{fontSize: 12, color: "var(--dash-text-secondary)", overflow: "auto", maxHeight: 500, whiteSpace: "pre-wrap", background: "var(--dash-surface-hover)", padding: 12, borderRadius: 8}}>
+            <pre style={{fontSize: 13, color: "var(--dash-text-secondary)", overflow: "auto", maxHeight: 500, whiteSpace: "pre-wrap", background: "var(--dash-surface-hover)", padding: 12, borderRadius: 8}}>
               {JSON.stringify(results, null, 2)}
             </pre>
           )}
@@ -919,7 +919,7 @@ export default function Labeling() {
         <div className="modal-overlay" onClick={() => setShowSaveDialog(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2>Save rule set</h2>
-            <p style={{fontSize: 13, color: "var(--dash-text-muted)", marginTop: -4, marginBottom: 16}}>
+            <p style={{fontSize: 14, color: "var(--dash-text-muted)", marginTop: -4, marginBottom: 16}}>
               Persist these {validRules().length} rule(s) so you can reuse them on any dataset.
             </p>
             <div className="input-group">

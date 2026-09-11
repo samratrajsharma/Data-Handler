@@ -148,7 +148,7 @@ export default function LLMConfig() {
               <input value={modelName} onChange={(e) => setModelName(e.target.value)} placeholder="Model name" />
             )}
             {modelWarning && (
-              <div style={{marginTop: 6, fontSize: 12, color: "var(--dash-warning, var(--dash-text-secondary))"}}>
+              <div style={{marginTop: 6, fontSize: 13, color: "var(--dash-warning, var(--dash-text-secondary))"}}>
                 {modelWarning}
               </div>
             )}
@@ -174,7 +174,7 @@ export default function LLMConfig() {
                   <input type="number" min={1} value={maxTokens} onChange={(e) => setMaxTokens(+e.target.value)} />
                 </div>
               </div>
-              <label style={{display:"flex", alignItems:"center", gap: 8, fontSize: 13, color: "var(--dash-text-secondary)", marginBottom: 16}}>
+              <label style={{display:"flex", alignItems:"center", gap: 8, fontSize: 14, color: "var(--dash-text-secondary)", marginBottom: 16}}>
                 <input type="checkbox" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} /> Set as default provider
               </label>
               <button className="btn btn--primary" onClick={handleSave} disabled={!selProvider || !modelName || saving}>
@@ -189,7 +189,7 @@ export default function LLMConfig() {
                 {testing ? "Testing..." : "Test Connection"}
               </button>
               {testResult && (
-                <pre style={{marginTop: 16, fontSize: 12, color: "var(--dash-text-secondary)", overflow: "auto", whiteSpace: "pre-wrap"}}>
+                <pre style={{marginTop: 16, fontSize: 13, color: "var(--dash-text-secondary)", overflow: "auto", whiteSpace: "pre-wrap"}}>
                   {JSON.stringify(testResult, null, 2)}
                 </pre>
               )}

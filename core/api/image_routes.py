@@ -549,6 +549,198 @@ async def get_clusters(
     }
 
 
+class CropRequest(BaseModel):
+    """Crop box, normalized 0..1 against the CURRENT image frame.
+
+    Normalized rather than pixels so the frontend can send exactly what it drew
+    on the canvas, which already works in normalized space (as annotations do).
+    """
+    x: float = Field(..., ge=0.0, le=1.0)
+    y: float = Field(..., ge=0.0, le=1.0)
+    w: float = Field(..., gt=0.0, le=1.0)
+    h: float = Field(..., gt=0.0, le=1.0)
+
+
+class CropResponse(BaseModel):
+    asset_id: str
+    width: int
+    height: int
+    annotations_kept: int
+    annotations_dropped: int
+    original_backup_path: Optional[str]
+
+
+@router.post("/{dataset_id}/{asset_id}/crop", response_model=CropResponse)
+async def crop_image(
+    dataset_id: UUID,
+    asset_id: UUID,
+    body: CropRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Crop an image in place, replacing the stored original.
+
+    THIS IS DESTRUCTIVE BY DESIGN — the cropped image takes the original's
+    object key, so every existing URL and export keeps working with no new
+    asset row. The safety net is that the untouched original is copied to
+    `datasets/{id}/_originals/...` first, so a mis-crop is recoverable by hand
+    even though the UI offers no undo.
+
+    ANNOTATIONS ARE REMAPPED, NOT DISCARDED. Geometry is normalized against the
+    image frame, so cropping changes what those numbers mean: a box at x=0.5 in
+    the old frame is somewhere else entirely in the new one. Each coordinate is
+    re-expressed against the crop box, and anything now fully outside it is
+    deleted. Without this the annotations would silently point at the wrong
+    pixels — worse than losing them, because nothing would look broken.
+    """
+    from io import BytesIO
+
+    from PIL import Image
+
+    from core.models.annotation import ImageAnnotation
+
+    asset = (
+        await db.execute(
+            select(ImageAsset).where(
+                ImageAsset.id == asset_id,
+                ImageAsset.dataset_id == dataset_id,
+            )
+        )
+    ).scalars().first()
+    if asset is None:
+        raise HTTPException(status_code=404, detail="Image asset not found")
+    if not asset.original_path:
+        raise HTTPException(status_code=409, detail="Asset has no stored original to crop")
+
+    # Clamp the box to the frame so a drag that ran off the canvas edge still
+    # produces a valid crop instead of a 422.
+    cx, cy = max(0.0, body.x), max(0.0, body.y)
+    cw, ch = min(body.w, 1.0 - cx), min(body.h, 1.0 - cy)
+    if cw <= 0 or ch <= 0:
+        raise HTTPException(status_code=422, detail="Crop box is empty after clamping to the image")
+
+    mc = _get_minio_client()
+    try:
+        resp = mc.get_object(settings.MINIO_BUCKET_NAME, asset.original_path)
+        try:
+            raw = resp.read()
+        finally:
+            resp.close()
+            resp.release_conn()
+    except Exception as exc:
+        logger.error("Crop: could not read original %s: %s", asset.original_path, exc)
+        raise HTTPException(status_code=502, detail="Could not read the stored image") from exc
+
+    try:
+        img = Image.open(BytesIO(raw))
+        img.load()
+        fmt = img.format or "PNG"
+        W, H = img.size
+        left, top = int(round(cx * W)), int(round(cy * H))
+        right, bottom = int(round((cx + cw) * W)), int(round((cy + ch) * H))
+        # At least one pixel in each axis after rounding.
+        right, bottom = max(left + 1, right), max(top + 1, bottom)
+        cropped = img.crop((left, top, right, bottom))
+        out = BytesIO()
+        # JPEG cannot hold an alpha channel; a PNG-sourced RGBA crop saved as
+        # JPEG would raise. Keep the source format and drop alpha only if we
+        # must encode as JPEG.
+        if fmt.upper() in {"JPEG", "JPG"} and cropped.mode not in ("RGB", "L"):
+            cropped = cropped.convert("RGB")
+        cropped.save(out, format=fmt)
+        new_bytes = out.getvalue()
+        new_w, new_h = cropped.size
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Crop: failed to process image %s: %s", asset_id, exc, exc_info=True)
+        raise HTTPException(status_code=422, detail=f"Could not crop this image: {exc}") from exc
+
+    # ---- Back up the untouched original BEFORE overwriting ----
+    # Best-effort: a storage hiccup here must not block the crop, but it is
+    # logged loudly because it is the only route back.
+    backup_key: Optional[str] = None
+    try:
+        backup_key = f"datasets/{dataset_id}/_originals/{asset_id}_{asset.file_name}"
+        # Don't clobber an existing backup: a second crop would otherwise
+        # overwrite the true original with the already-cropped version.
+        try:
+            mc.stat_object(settings.MINIO_BUCKET_NAME, backup_key)
+            logger.info("Crop: backup already exists for %s, keeping the first one", asset_id)
+        except Exception:
+            _upload_bytes_to_minio(
+                mc, raw, backup_key,
+                content_type=asset.mime_type or "application/octet-stream",
+            )
+    except Exception as exc:
+        backup_key = None
+        logger.warning("Crop: could NOT back up the original for %s: %s", asset_id, exc)
+
+    # ---- Replace the original, refresh the thumbnail ----
+    _upload_bytes_to_minio(
+        mc, new_bytes, asset.original_path,
+        content_type=asset.mime_type or "application/octet-stream",
+    )
+    if asset.thumbnail_path:
+        try:
+            _upload_bytes_to_minio(
+                mc, generate_thumbnail(new_bytes, max_size=_THUMBNAIL_SIZE),
+                asset.thumbnail_path, content_type="image/jpeg",
+            )
+        except Exception as exc:
+            logger.warning("Crop: thumbnail regeneration failed for %s: %s", asset_id, exc)
+
+    asset.width, asset.height = new_w, new_h
+    asset.file_size = len(new_bytes)
+
+    # ---- Remap annotations into the new frame ----
+    anns = (
+        await db.execute(select(ImageAnnotation).where(ImageAnnotation.asset_id == asset_id))
+    ).scalars().all()
+
+    def remap(v: float, origin: float, span: float) -> float:
+        return (v - origin) / span
+
+    kept = dropped = 0
+    for a in anns:
+        if a.kind == "classification":
+            kept += 1                      # whole-image label, geometry-free
+            continue
+        if a.kind == "bbox" and None not in (a.x, a.y, a.w, a.h):
+            nx, ny = remap(a.x, cx, cw), remap(a.y, cy, ch)
+            nw, nh = a.w / cw, a.h / ch
+            # Intersect with the new frame; gone entirely if there is no overlap.
+            x0, y0 = max(0.0, nx), max(0.0, ny)
+            x1, y1 = min(1.0, nx + nw), min(1.0, ny + nh)
+            if x1 - x0 <= 0 or y1 - y0 <= 0:
+                await db.delete(a); dropped += 1; continue
+            a.x, a.y, a.w, a.h = x0, y0, x1 - x0, y1 - y0
+            kept += 1
+        elif a.kind == "polygon" and a.points:
+            pts = [[remap(px, cx, cw), remap(py, cy, ch)] for px, py in a.points]
+            # Keep the polygon if any vertex still lands inside, clamping the
+            # rest to the edge. Proper polygon clipping (Sutherland-Hodgman)
+            # would follow the boundary exactly; this is the honest simple
+            # version and it distorts shapes that straddle the crop edge.
+            if not any(0.0 <= px <= 1.0 and 0.0 <= py <= 1.0 for px, py in pts):
+                await db.delete(a); dropped += 1; continue
+            a.points = [[min(1.0, max(0.0, px)), min(1.0, max(0.0, py))] for px, py in pts]
+            kept += 1
+        else:
+            kept += 1
+
+    await db.commit()
+    logger.info(
+        "Cropped %s to %dx%d (annotations kept=%d dropped=%d, backup=%s)",
+        asset_id, new_w, new_h, kept, dropped, backup_key,
+    )
+    return CropResponse(
+        asset_id=str(asset_id), width=new_w, height=new_h,
+        annotations_kept=kept, annotations_dropped=dropped,
+        original_backup_path=backup_key,
+    )
+
+
 @router.get("/{dataset_id}/{asset_id}", response_model=ImageAssetResponse)
 async def get_image_detail(
     dataset_id: UUID,

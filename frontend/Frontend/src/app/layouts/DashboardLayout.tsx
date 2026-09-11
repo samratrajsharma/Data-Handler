@@ -3,7 +3,20 @@ import { NavLink, Link, Outlet, useLocation, useNavigate } from "react-router-do
 import api from "../../shared/api/client";
 import "./DashboardLayout.css";
 
-type NavItem = { to: string; icon: string; label: string; end?: boolean };
+type NavItem = {
+  to: string;
+  icon: string;
+  label: string;
+  end?: boolean;
+  /** Position in the mode's workflow, 1-based.
+   *
+   *  The nav items were already in pipeline order — Images, then Annotate,
+   *  then Review & Export — but nothing said so, and a first-time user has no
+   *  way to tell an ordered process from an unordered menu. Numbering them is
+   *  the whole feature: no extra screen, no extra concepts, just the order
+   *  made visible where the user already looks. */
+  step?: number;
+};
 type Mode = "tabular" | "image" | "text";
 
 // Always-visible entry points (top of the sidebar).
@@ -16,30 +29,33 @@ const TOP_ITEMS: NavItem[] = [
 // that data type's tools, so text / tabular / image flows don't clutter. Each
 // mode ends in "Review & Export" — the natural last step of that flow.
 const REVIEW: NavItem = { to: "/review", icon: "check-circle", label: "Review & Export" };
+
+/** Same destination, numbered as the final step of a mode's pipeline. */
+const reviewStep = (step: number): NavItem => ({ ...REVIEW, step });
 const MODES: { id: Mode; label: string; icon: string; items: NavItem[] }[] = [
   {
     id: "tabular", label: "Tabular", icon: "table",
     items: [
-      { to: "/structuring", icon: "layers",    label: "Structuring" },
-      { to: "/eda",         icon: "bar-chart", label: "EDA" },
-      { to: "/labeling",    icon: "tag",       label: "Labeling" },
-      { to: "/ai-labeling", icon: "cpu",       label: "AI Labeling" },
-      REVIEW,
+      { to: "/structuring", icon: "layers",    label: "Structuring", step: 1 },
+      { to: "/eda",         icon: "bar-chart", label: "EDA",         step: 2 },
+      { to: "/labeling",    icon: "tag",       label: "Labeling",    step: 3 },
+      { to: "/ai-labeling", icon: "cpu",       label: "AI Labeling", step: 4 },
+      reviewStep(5),
     ],
   },
   {
     id: "image", label: "Image", icon: "image",
     items: [
-      { to: "/images",   icon: "image",     label: "Images" },
-      { to: "/annotate", icon: "crosshair", label: "Annotate" },
-      REVIEW,
+      { to: "/images",   icon: "image",     label: "Images",   step: 1 },
+      { to: "/annotate", icon: "crosshair", label: "Annotate", step: 2 },
+      reviewStep(3),
     ],
   },
   {
     id: "text", label: "Text", icon: "file-text",
     items: [
-      { to: "/text-labeling", icon: "file-text", label: "Text Labeling" },
-      REVIEW,
+      { to: "/text-labeling", icon: "file-text", label: "Text Labeling", step: 1 },
+      reviewStep(2),
     ],
   },
 ];
@@ -96,8 +112,50 @@ function initialMode(path: string): Mode {
   return "tabular";
 }
 
+/**
+ * Whether the sidebar is pinned open. Persisted, because it is a working
+ * preference rather than a per-visit choice: someone who wants the labels
+ * always visible wants that tomorrow too.
+ */
+const PIN_KEY = "dh-sidebar-pinned";
+
+function readPinned(): boolean {
+  try {
+    return localStorage.getItem(PIN_KEY) === "1";
+  } catch {
+    return false;   // private mode — default to the rail
+  }
+}
+
 export default function DashboardLayout() {
-  const [collapsed, setCollapsed] = useState(false);
+  /**
+   * The sidebar has two modes, not three states.
+   *
+   *  unpinned (default) — a 72px icon rail that expands on hover and collapses
+   *                       the moment the pointer leaves. It expands as an
+   *                       OVERLAY: the main content keeps its rail-width
+   *                       margin, so hovering the nav never reflows the page
+   *                       underneath. Reflowing on hover is what makes this
+   *                       pattern feel broken elsewhere — text reflows, the
+   *                       thing you were reading jumps, and on the annotator
+   *                       the canvas would resize every time you passed the
+   *                       left edge.
+   *
+   *  pinned             — always expanded, content shifted over to match. The
+   *                       button in the header toggles it.
+   *
+   * Hover is pure CSS (:hover on the aside). React only owns the pin, so
+   * moving the mouse across the sidebar causes no re-render at all.
+   */
+  const [pinned, setPinned] = useState(readPinned);
+
+  const togglePin = () => {
+    setPinned((p) => {
+      const next = !p;
+      try { localStorage.setItem(PIN_KEY, next ? "1" : "0"); } catch { /* ignore */ }
+      return next;
+    });
+  };
 
   // Build identity for the sidebar. Uses /api/v1/version rather than /health
   // because only /api/* is reverse-proxied (nginx in prod, Vite in dev) — a
@@ -152,20 +210,37 @@ export default function DashboardLayout() {
         stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d={ICONS[item.icon]} />
       </svg>
-      {!collapsed && <span>{item.label}</span>}
+      <span className="dash__label">{item.label}</span>
+      {/* Step number, right-aligned so it reads as an index rather than part
+          of the label. Fades out with the labels on the icon rail, where
+          there is no room and the icons already carry the order. */}
+      {item.step !== undefined && (
+        <span className="dash__step">{item.step}</span>
+      )}
     </NavLink>
   );
 
   return (
-    <div className={`dash ${collapsed ? "dash--collapsed" : ""}`}>
+    <div className={`dash ${pinned ? "dash--pinned" : "dash--rail"}`}>
       <aside className="dash__sidebar">
         <div className="dash__sidebar-header">
           <Link to="/" className="dash__logo" title="Home">
             <span className="dash__brand">Data Handler</span>
           </Link>
-          <button className="dash__toggle" onClick={() => setCollapsed(!collapsed)} title="Collapse sidebar">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              {collapsed ? <path d="M9 18l6-6-6-6"/> : <path d="M15 18l-6-6 6-6"/>}
+          {/* Pin, not collapse: unpinned already collapses itself on mouse-out,
+              so the only thing left to choose is whether it stays. The icon is
+              a pushpin rather than a chevron for that reason — a chevron would
+              promise a direction the button no longer controls. */}
+          <button
+            className={`dash__toggle ${pinned ? "dash__toggle--on" : ""}`}
+            onClick={togglePin}
+            aria-pressed={pinned}
+            title={pinned ? "Unpin — collapse when the mouse leaves" : "Pin the sidebar open"}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 17v5" />
+              <path d="M9 10.76a2 2 0 01-1.11 1.79l-1.78.9A2 2 0 005 15.24V16a1 1 0 001 1h12a1 1 0 001-1v-.76a2 2 0 00-1.11-1.79l-1.78-.9A2 2 0 0115 10.76V7a1 1 0 011-1 2 2 0 000-4H8a2 2 0 000 4 1 1 0 011 1z" />
             </svg>
           </button>
         </div>
@@ -185,7 +260,7 @@ export default function DashboardLayout() {
                 stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d={ICONS[m.icon]} />
               </svg>
-              {!collapsed && <span>{m.label}</span>}
+              <span className="dash__label">{m.label}</span>
             </button>
           ))}
         </div>
@@ -213,12 +288,12 @@ export default function DashboardLayout() {
                 <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
               </svg>
             )}
-            {!collapsed && <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>}
+            <span className="dash__label">{theme === "dark" ? "Light mode" : "Dark mode"}</span>
           </button>
           {/* Build identity, straight from /health. The backend reports the git
               tag it was built from, so a screenshot of the sidebar is enough to
-              identify the exact build in a bug report. Hidden when collapsed. */}
-          {!collapsed && version && (
+              identify the exact build in a bug report. Fades out on the rail. */}
+          {version && (
             <div className="dash__version" title={`Data Handler ${version}`}>
               {version}
             </div>

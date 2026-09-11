@@ -199,7 +199,7 @@ export default function Structuring() {
               borderRadius: 12, padding: "12px 14px", marginBottom: 14,
             }}>
               <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8}}>
-                <span style={{fontSize: 13, fontWeight: 700, color: "var(--dash-text)"}}>
+                <span style={{fontSize: 14, fontWeight: 700, color: "var(--dash-text)"}}>
                   &#9889; Recommended for this dataset
                 </span>
                 <button type="button" className="btn btn--sm btn--primary" onClick={applyAllRecs}>
@@ -265,10 +265,10 @@ export default function Structuring() {
               background: "#fff",
             }}>
               <div style={{display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4}}>
-                <span style={{fontSize: 13, fontWeight: 700, color: "var(--dash-text)"}}>
+                <span style={{fontSize: 14, fontWeight: 700, color: "var(--dash-text)"}}>
                   Per-column audit
                 </span>
-                <span style={{fontSize: 11.5, color: "var(--dash-text-muted)"}}>
+                <span style={{fontSize: 12.5, color: "var(--dash-text-muted)"}}>
                   {recs.per_column.length} column{recs.per_column.length === 1 ? "" : "s"} · click an action to apply
                 </span>
               </div>
@@ -387,7 +387,7 @@ export default function Structuring() {
                     <button key={c} type="button"
                       onClick={() => setDropCols(selected ? dropCols.filter(x => x !== c) : [...dropCols, c])}
                       style={{
-                        padding: "4px 10px", fontSize: 12, borderRadius: 100,
+                        padding: "4px 10px", fontSize: 13, borderRadius: 100,
                         border: `1px solid ${selected ? "var(--dash-text-muted)" : "var(--dash-border)"}`,
                         background: selected ? "rgba(220,38,38,0.08)" : "#fff",
                         color: selected ? "var(--dash-text-muted)" : "var(--dash-text)",
@@ -422,7 +422,7 @@ export default function Structuring() {
                     onChange={(e) => {
                       const u = [...encodeRows]; u[i] = { ...u[i], column: e.target.value }; setEncodeRows(u);
                     }}
-                    style={{flex: 2, padding: "8px 12px", border: "1px solid var(--dash-border)", borderRadius: 8, fontSize: 13}}>
+                    style={{flex: 2, padding: "8px 12px", border: "1px solid var(--dash-border)", borderRadius: 8, fontSize: 14}}>
                     <option value="">Select column</option>
                     {columns.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
@@ -430,7 +430,7 @@ export default function Structuring() {
                     onChange={(e) => {
                       const u = [...encodeRows]; u[i] = { ...u[i], mode: e.target.value as "onehot" | "label" }; setEncodeRows(u);
                     }}
-                    style={{flex: 1, padding: "8px 12px", border: "1px solid var(--dash-border)", borderRadius: 8, fontSize: 13}}>
+                    style={{flex: 1, padding: "8px 12px", border: "1px solid var(--dash-border)", borderRadius: 8, fontSize: 14}}>
                     <option value="onehot">One-Hot</option>
                     <option value="label">Label codes</option>
                   </select>
@@ -469,7 +469,7 @@ export default function Structuring() {
 
           <TaskMonitor rate={rate} task={task} steps={steps} stuck={stuck} progressPct={progressPct} running={running} />
           {running && progressPct >= 95 && (
-            <p style={{fontSize: 11.5, color: "var(--dash-text-muted)", marginTop: 6, fontStyle: "italic"}}>
+            <p style={{fontSize: 12.5, color: "var(--dash-text-muted)", marginTop: 6, fontStyle: "italic"}}>
               Almost done — finalising the cleaned file and updating the dataset status. If this hangs for more than 30 seconds, hit Reset and try again.
             </p>
           )}
@@ -513,8 +513,8 @@ export default function Structuring() {
                       padding: "12px 16px", marginBottom: 16, borderRadius: 12,
                       background: "var(--dash-primary-dim)", border: "1px solid var(--dash-border)",
                     }}>
-                      <span style={{fontSize: 13, fontWeight: 600, color: "var(--dash-text)"}}>Data Quality Score</span>
-                      <span style={{fontSize: 15, fontWeight: 800, color: "var(--dash-primary)"}}>
+                      <span style={{fontSize: 14, fontWeight: 600, color: "var(--dash-text)"}}>Data Quality Score</span>
+                      <span style={{fontSize: 16, fontWeight: 800, color: "var(--dash-primary)"}}>
                         {quality.overall_score}{quality.grade ? ` · Grade ${quality.grade}` : ""}
                       </span>
                     </div>
@@ -647,7 +647,7 @@ export default function Structuring() {
                           <td>{step.rows_before.toLocaleString()}</td>
                           <td>{step.rows_after.toLocaleString()}</td>
                           <td>{step.rows_affected.toLocaleString()}</td>
-                          <td style={{fontSize: 12, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}
+                          <td style={{fontSize: 13, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}
                             title={step.columns_affected.join(", ")}>
                             {step.columns_affected.join(", ") || "—"}
                           </td>
@@ -660,7 +660,7 @@ export default function Structuring() {
 
               {/* ── Raw JSON Tab ── */}
               {tab === "raw" && (
-                <pre style={{fontSize: 12, color: "var(--dash-text-secondary)", overflow: "auto", maxHeight: 500, whiteSpace: "pre-wrap", background: "var(--dash-surface-hover)", padding: 12, borderRadius: 8}}>
+                <pre style={{fontSize: 13, color: "var(--dash-text-secondary)", overflow: "auto", maxHeight: 500, whiteSpace: "pre-wrap", background: "var(--dash-surface-hover)", padding: 12, borderRadius: 8}}>
                   {JSON.stringify(results, null, 2)}
                 </pre>
               )}

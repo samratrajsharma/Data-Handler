@@ -1,6 +1,7 @@
 """
 Annotation Export API — package image annotations into standard ML formats
-(YOLO / COCO / Pascal VOC / folder classification) via a background task.
+(YOLO / COCO / Pascal VOC / folder classification / CreateML / TensorFlow CSV /
+semantic-segmentation masks) via a background task.
 """
 
 import uuid as _uuid
@@ -29,7 +30,10 @@ router = APIRouter(prefix="/api/v1/annotations", tags=["annotation-export"])
 
 
 class ImageExportRequest(BaseModel):
-    format: Literal["yolo", "coco", "voc", "classification"]
+    format: Literal[
+        "yolo", "coco", "voc", "classification",
+        "createml", "tfcsv", "segmentation",
+    ]
     include_images: bool = True
 
 

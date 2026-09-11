@@ -7,6 +7,7 @@ import type {
   ImageAnnotationIn,
   ImageAnnotationOut,
 } from "../../../shared/api/annotations";
+import type { RleMask } from "./maskCodec";
 
 // ── Local annotation model ───────────────────────────────────────────────
 
@@ -22,6 +23,11 @@ export interface LocalAnnotation {
   w: number | null;
   h: number | null;
   points: [number, number][] | null;
+  /** Segmentation mask for kind === "mask", COCO RLE.
+   *  Absolute pixels, unlike everything above it: RLE is defined over a pixel
+   *  grid, so a mask does not survive a resize the way normalized geometry
+   *  does. `size` pins it to the image it was painted on. */
+  mask?: RleMask | null;
 }
 
 let idCounter = 0;
@@ -41,6 +47,7 @@ export function fromServer(a: ImageAnnotationOut): LocalAnnotation {
     w: a.w,
     h: a.h,
     points: a.points,
+    mask: (a as { mask?: RleMask | null }).mask ?? null,
   };
 }
 
@@ -51,6 +58,13 @@ export function toServer(a: LocalAnnotation): ImageAnnotationIn {
   }
   if (a.kind === "polygon") {
     return { class_id: a.class_id, kind: "polygon", x: null, y: null, w: null, h: null, points: a.points };
+  }
+  if (a.kind === "mask") {
+    return {
+      class_id: a.class_id, kind: "mask",
+      x: null, y: null, w: null, h: null, points: null,
+      mask: a.mask ?? null,
+    };
   }
   return { class_id: a.class_id, kind: "classification", x: null, y: null, w: null, h: null, points: null };
 }

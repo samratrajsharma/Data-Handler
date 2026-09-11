@@ -17,10 +17,16 @@
 :root[data-theme="dark"] {
   --font-primary: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-  /* Neutral ramp (dark) */
+  /* Neutral ramp (dark)
+     ink-1/ink-2 are measured, not picked by eye. Against the #141414 surface:
+       ink-1 #b0b0b0 -> 8.5:1   ink-2 #8c8c8c -> 5.5:1
+     The previous values (#a0a0a0 / #6a6a6a) put ink-2 at 3.4:1, under the 4.5:1
+     AA floor for normal text — and ink-2 is what carries nearly every caption,
+     hint and sub-label in the app. That is what read as "dull": not a style
+     choice, a contrast failure. */
   --ink-0:  #ffffff;
-  --ink-1:  #a0a0a0;
-  --ink-2:  #6a6a6a;
+  --ink-1:  #b0b0b0;
+  --ink-2:  #8c8c8c;
   --paper-0:#0a0a0a;
   --paper-1:#141414;
   --paper-2:#1c1c1c;
@@ -36,6 +42,23 @@
   --accent:        #f97316;   /* bars, rings, links, active states, icons */
   --accent-strong: #ea580c;   /* filled buttons (keeps white text readable) */
   --accent-dim:    rgba(249, 115, 22, 0.16);
+  /* Hover state for a filled accent button. Direction is theme-dependent: on
+     dark the fill brightens, on light it deepens. `--accent` was serving as
+     the hover in both, which meant light mode got LIGHTER on hover — the
+     interactive state ended up less legible than the resting one (3.6:1). */
+  --accent-hover:  #f97316;
+  /* Approval green. A filled green button has two contrast jobs — its label
+     must be readable ON it, and it must be visible AGAINST the page. Dark
+     mode uses a bright green with a near-black label (7.3:1 label, 8.1:1
+     against the page); white-on-#22c55e would be 2.3:1 and unreadable. */
+  --ok:            #22c55e;
+  --ok-hover:      #4ade80;
+  --on-ok:         #06230f;
+  /* Accent used AS TEXT. On dark the accent already reads at 6.6:1, so it is
+     the same colour; light mode overrides it because #ea580c on white is only
+     3.6:1. Split into its own token so a fill and a label can differ without
+     every call site having to know which case it is. */
+  --accent-text:   #f97316;
 
   /* Semantic tokens (names kept stable so the whole app re-skins) */
   --color-bg: var(--paper-0);
@@ -75,11 +98,19 @@
   --dash-text: var(--ink-0);
   --dash-text-secondary: var(--ink-1);
   --dash-text-muted: var(--ink-2);
-  --dash-sidebar-width: 260px;
+  --dash-sidebar-width: 276px;
   --dash-topbar-height: 56px;
   --dash-primary: var(--accent);
   --dash-primary-dim: var(--accent-dim);
-  --dash-on-primary: #ffffff;
+  /* Text/icons sitting ON an accent fill.
+     Near-black, not white: white on #ea580c is 3.6:1 and on #f97316 only
+     2.8:1 — both fail. Darkening the FILL instead would fix the label and
+     break the button, because #9a3412 is 2.7:1 against this page and the
+     control would sink into the background. Bright fill + dark label reads
+     5.6:1 on the base and 7.1:1 on hover, and keeps the button loud.
+     This token was defined and never consumed; .btn--primary hard-coded white
+     and had been failing since the theme was written. */
+  --dash-on-primary: #0a0a0a;
   --dash-accent: var(--accent);
   --dash-success: var(--ink-0);
   --dash-warning: var(--ink-1);
@@ -89,10 +120,16 @@
 }
 
 :root[data-theme="light"] {
-  /* Neutral ramp (light) */
+  /* Neutral ramp (light)
+     Measured against white and against the #f4f4f4 / #ececec surfaces, since
+     muted text lands on all three:
+       ink-1 #4a4a4a -> 8.9:1 / 8.1:1     ink-2 #6b6b6b -> 5.3:1 / 4.9:1 / 4.5:1
+     The old ink-2 #8a8a8a was 3.5:1 on white and 2.9:1 on #ececec — worse than
+     the dark theme, and the reason small text looked washed out in light mode
+     too. */
   --ink-0:  #0a0a0a;
-  --ink-1:  #555555;
-  --ink-2:  #8a8a8a;
+  --ink-1:  #4a4a4a;
+  --ink-2:  #6b6b6b;
   --paper-0:#ffffff;
   --paper-1:#ffffff;
   --paper-2:#f4f4f4;
@@ -108,10 +145,24 @@
   --accent:        #ea580c;
   --accent-strong: #c2410c;
   --accent-dim:    rgba(234, 88, 12, 0.10);
+  /* Deepens on hover. White on this is 7.3:1. */
+  --accent-hover:  #9a3412;
+  /* Light mode flips it: a deep green carrying white, because #22c55e on a
+     white page is only 2.3:1 — the button itself would barely be visible. */
+  --ok:            #15803d;
+  --ok-hover:      #166534;
+  --on-ok:         #ffffff;
+  /* #ea580c as TEXT on white is 3.6:1 — it fails, and accent-coloured labels
+     (active nav, links, the zoom readout) are exactly where it was used. The
+     darker step reads 5.2:1 on white and 4.7:1 on #f4f4f4 while staying
+     recognisably the same orange. Fills keep --accent; only text moves. */
+  --accent-text:   #c2410c;
 
   --color-primary-dark: var(--accent-strong);
   --color-primary-light: #f0f0f0;
 
+  /* Light mode keeps white: the fill is the darker #c2410c, where white is
+     5.2:1. Same token, opposite answer — which is why it is a token. */
   --dash-on-primary: #ffffff;
   --dash-warning: var(--ink-1);
 }
@@ -141,7 +192,7 @@ button { cursor: pointer; border: none; outline: none; font-family: var(--font-p
   font-size: 26px; font-weight: 700; letter-spacing: -0.025em;
   color: var(--dash-text);
 }
-.page-header p { color: var(--dash-text-secondary); font-size: 14px; margin-top: 6px; }
+.page-header p { color: var(--dash-text-secondary); font-size: 15px; margin-top: 6px; }
 
 /* ━━━ Cards ━━━ */
 .card {
@@ -154,7 +205,7 @@ button { cursor: pointer; border: none; outline: none; font-family: var(--font-p
 }
 .card:hover { border-color: var(--dash-border-strong); }
 .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-.card-header h3 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; color: var(--dash-text); }
+.card-header h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; color: var(--dash-text); }
 
 /* ━━━ Stats ━━━ */
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
@@ -179,25 +230,25 @@ button { cursor: pointer; border: none; outline: none; font-family: var(--font-p
   transition: opacity 0.2s;
 }
 .stat-card:hover::before { opacity: 1; }
-.stat-card__label { font-size: 12px; color: var(--dash-text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.stat-card__label { font-size: 13px; color: var(--dash-text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
 .stat-card__value { font-size: 30px; font-weight: 800; margin-top: 6px; letter-spacing: -0.02em; color: var(--dash-text); }
-.stat-card__sub { font-size: 12px; color: var(--dash-text-secondary); margin-top: 4px; }
+.stat-card__sub { font-size: 13px; color: var(--dash-text-secondary); margin-top: 4px; }
 
 /* ━━━ Buttons ━━━ */
 .btn {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 10px 20px; border-radius: 10px;
-  font-size: 13.5px; font-weight: 600;
+  font-size: 14.5px; font-weight: 600;
   border: 1px solid transparent;
   transition: all 0.15s ease;
   white-space: nowrap;
 }
 .btn--primary {
   background: var(--accent-strong);
-  color: #ffffff;
+  color: var(--dash-on-primary);
   border-color: var(--accent-strong);
 }
-.btn--primary:hover { background: var(--accent); border-color: var(--accent); }
+.btn--primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 .btn--secondary {
   background: var(--dash-surface);
   color: var(--dash-text);
@@ -211,14 +262,14 @@ button { cursor: pointer; border: none; outline: none; font-family: var(--font-p
   font-weight: 700;
 }
 .btn--danger:hover { background: var(--tint); border-color: var(--dash-text); }
-.btn--sm { padding: 7px 14px; font-size: 12px; border-radius: 8px; }
+.btn--sm { padding: 7px 14px; font-size: 13px; border-radius: 8px; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
 
 /* ━━━ Badges (state via border/weight, not colour) ━━━ */
 .badge {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 4px 12px; border-radius: 20px;
-  font-size: 11.5px; font-weight: 600;
+  font-size: 12.5px; font-weight: 600;
   letter-spacing: 0.01em;
   background: var(--tint);
   color: var(--dash-text-secondary);
@@ -227,7 +278,7 @@ button { cursor: pointer; border: none; outline: none; font-family: var(--font-p
 .badge--success { color: var(--dash-text); border-color: var(--dash-border-strong); }
 .badge--warning { color: var(--dash-text-secondary); border-style: dashed; border-color: var(--dash-border-strong); }
 .badge--danger  { background: transparent; color: var(--dash-text); border-color: var(--dash-text); font-weight: 700; }
-.badge--info    { background: var(--accent-dim); color: var(--accent); border-color: transparent; }
+.badge--info    { background: var(--accent-dim); color: var(--accent-text); border-color: transparent; }
 .badge--neutral { color: var(--dash-text-secondary); }
 
 .badge-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
@@ -238,7 +289,7 @@ button { cursor: pointer; border: none; outline: none; font-family: var(--font-p
 
 /* ━━━ Form Inputs ━━━ */
 .input-group { margin-bottom: 16px; }
-.input-group label { display: block; font-size: 13px; font-weight: 600; color: var(--dash-text-secondary); margin-bottom: 6px; }
+.input-group label { display: block; font-size: 14px; font-weight: 600; color: var(--dash-text-secondary); margin-bottom: 6px; }
 .input-group input, .input-group select, .input-group textarea {
   width: 100%;
   padding: 10px 14px;
@@ -246,7 +297,7 @@ button { cursor: pointer; border: none; outline: none; font-family: var(--font-p
   border: 1px solid var(--dash-border);
   border-radius: 10px;
   color: var(--dash-text);
-  font-size: 14px;
+  font-size: 15px;
   font-family: var(--font-primary);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -258,11 +309,11 @@ button { cursor: pointer; border: none; outline: none; font-family: var(--font-p
 
 /* ━━━ Tables ━━━ */
 .table-wrap { overflow-x: auto; border-radius: 12px; }
-.table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
 .table th {
   text-align: left;
   padding: 12px 16px;
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 700;
   color: var(--dash-text-muted);
   text-transform: uppercase;
@@ -306,7 +357,7 @@ button { cursor: pointer; border: none; outline: none; font-family: var(--font-p
 /* ━━━ Empty State ━━━ */
 .empty-state { text-align: center; padding: 56px 24px; color: var(--dash-text-muted); }
 .empty-state svg { margin-bottom: 16px; opacity: 0.3; }
-.empty-state h3 { font-size: 16px; color: var(--dash-text-secondary); margin-bottom: 8px; font-weight: 600; }
+.empty-state h3 { font-size: 17px; color: var(--dash-text-secondary); margin-bottom: 8px; font-weight: 600; }
 
 /* ━━━ Progress Bar ━━━ */
 .progress-bar { height: 6px; background: var(--dash-surface-hover); border-radius: 6px; overflow: hidden; }
@@ -315,7 +366,7 @@ button { cursor: pointer; border: none; outline: none; font-family: var(--font-p
 /* ━━━ Toast Notifications ━━━ */
 .toast-container { position: fixed; top: 20px; right: 20px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
 .toast {
-  padding: 12px 20px; border-radius: 12px; font-size: 13.5px; font-weight: 500;
+  padding: 12px 20px; border-radius: 12px; font-size: 14.5px; font-weight: 500;
   background: var(--dash-surface);
   color: var(--dash-text);
   border: 1px solid var(--dash-border);
@@ -330,7 +381,7 @@ button { cursor: pointer; border: none; outline: none; font-family: var(--font-p
 /* ━━━ Tabs ━━━ */
 .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--dash-border); margin-bottom: 24px; }
 .tab {
-  padding: 10px 18px; font-size: 13.5px; font-weight: 500;
+  padding: 10px 18px; font-size: 14.5px; font-weight: 500;
   color: var(--dash-text-secondary); background: none;
   border-bottom: 2px solid transparent; transition: all 0.15s ease;
 }
@@ -346,18 +397,18 @@ button { cursor: pointer; border: none; outline: none; font-family: var(--font-p
 
 .chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
-  padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+  padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 500;
   background: var(--dash-surface-hover); color: var(--dash-text-secondary);
   border: 1px solid var(--dash-border);
   transition: all 0.15s;
 }
-.chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip:hover { border-color: var(--accent); color: var(--accent-text); }
 
 /* ━━━ Loading (CSS ring — no external asset, monochrome) ━━━ */
 .dash-loading {
   display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px;
   height: 100vh; background: var(--dash-bg); color: var(--dash-text-secondary);
-  font-size: 15px;
+  font-size: 16px;
 }
 .dash-loading::before {
   content: '';

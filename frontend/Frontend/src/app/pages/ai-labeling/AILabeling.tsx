@@ -263,7 +263,7 @@ export default function AILabeling() {
         </div>
       ))}
       {preds.length > 30 && (
-        <p style={{ fontSize: 12, color: "var(--dash-text-muted)", marginTop: 10 }}>
+        <p style={{ fontSize: 13, color: "var(--dash-text-muted)", marginTop: 10 }}>
           Showing first 30 of {preds.length} predictions.
         </p>
       )}
@@ -290,10 +290,10 @@ export default function AILabeling() {
 
   const jsonBlock = (data: unknown) => (
     <details>
-      <summary style={{cursor: "pointer", fontSize: 12, color: "var(--dash-text-muted)", marginTop: 12}}>
+      <summary style={{cursor: "pointer", fontSize: 13, color: "var(--dash-text-muted)", marginTop: 12}}>
         Raw response (for debugging)
       </summary>
-      <pre style={{ fontSize: 11.5, color: "var(--dash-text-secondary)", overflow: "auto",
+      <pre style={{ fontSize: 12.5, color: "var(--dash-text-secondary)", overflow: "auto",
         maxHeight: 320, whiteSpace: "pre-wrap", background: "var(--dash-surface-hover)",
         padding: 10, borderRadius: 8, marginTop: 6 }}>
         {JSON.stringify(data, null, 2)}
@@ -354,7 +354,7 @@ export default function AILabeling() {
 
         {Object.keys(labelCounts).length > 0 && (
           <>
-            <h4 style={{margin: "16px 0 8px", fontSize: 14}}>Labels assigned</h4>
+            <h4 style={{margin: "16px 0 8px", fontSize: 15}}>Labels assigned</h4>
             <div className="ail-dist">
               {Object.entries(labelCounts).sort((a,b)=>b[1]-a[1]).map(([name, c]) => (
                 <div key={name} className="ail-dist__row">
@@ -371,7 +371,7 @@ export default function AILabeling() {
 
         {results.length > 0 && (
           <>
-            <h4 style={{margin: "16px 0 8px", fontSize: 14}}>Sample propagations</h4>
+            <h4 style={{margin: "16px 0 8px", fontSize: 15}}>Sample propagations</h4>
             <div>
               {results.slice(0, 20).map((p, i) => (
                 <div key={i} className="ail-pred">
@@ -383,7 +383,7 @@ export default function AILabeling() {
                     </span>
                     <span className="ail-pred__conf">{Math.round(p.confidence * 100)}%</span>
                   </div>
-                  <div className="ail-pred__text" style={{fontSize: 11.5}}>
+                  <div className="ail-pred__text" style={{fontSize: 12.5}}>
                     Row {p.item_id?.slice(0, 12)}…
                     {p.source_id && <> · learned from row {p.source_id.slice(0, 12)}…</>}
                     {p.similarity_score !== undefined && <> · {Math.round(p.similarity_score * 100)}% similar</>}
@@ -391,7 +391,7 @@ export default function AILabeling() {
                 </div>
               ))}
               {results.length > 20 && (
-                <p style={{fontSize: 12, color: "var(--dash-text-muted)", marginTop: 8}}>
+                <p style={{fontSize: 13, color: "var(--dash-text-muted)", marginTop: 8}}>
                   Showing first 20 of {results.length}.
                 </p>
               )}
@@ -441,7 +441,7 @@ export default function AILabeling() {
 
         {Object.keys(sourceBreakdown).length > 0 && (
           <>
-            <h4 style={{margin: "16px 0 8px", fontSize: 14}}>Where each label came from</h4>
+            <h4 style={{margin: "16px 0 8px", fontSize: 15}}>Where each label came from</h4>
             <div className="ail-dist">
               {Object.entries(sourceBreakdown).sort((a,b)=>b[1]-a[1]).map(([src, count]) => (
                 <div key={src} className="ail-dist__row">
@@ -458,7 +458,7 @@ export default function AILabeling() {
 
         {Object.keys(dist).length > 0 && (
           <>
-            <h4 style={{margin: "16px 0 8px", fontSize: 14}}>Final label distribution</h4>
+            <h4 style={{margin: "16px 0 8px", fontSize: 15}}>Final label distribution</h4>
             <div className="ail-dist">
               {Object.entries(dist).sort((a,b)=>b[1]-a[1]).map(([name, count]) => (
                 <div key={name} className="ail-dist__row">
@@ -475,7 +475,7 @@ export default function AILabeling() {
 
         {finalLabels.length > 0 && (
           <>
-            <h4 style={{margin: "16px 0 8px", fontSize: 14}}>Sample aggregated labels</h4>
+            <h4 style={{margin: "16px 0 8px", fontSize: 15}}>Sample aggregated labels</h4>
             <div>
               {finalLabels.slice(0, 15).map((f, i) => (
                 <div key={i} className="ail-pred">
@@ -488,7 +488,7 @@ export default function AILabeling() {
                     </span>
                     <span className="ail-pred__conf">{Math.round(Number(f.confidence ?? 0) * 100)}%</span>
                   </div>
-                  <div className="ail-pred__text" style={{fontSize: 11.5}}>
+                  <div className="ail-pred__text" style={{fontSize: 12.5}}>
                     Sources: {Array.isArray(f.sources) ? (f.sources as string[]).join(", ") : "—"}
                   </div>
                 </div>
@@ -545,7 +545,7 @@ export default function AILabeling() {
           <button className="btn btn--sm btn--secondary" onClick={copyAll}>Copy all (TSV)</button>
         </div>
 
-        <h4 style={{margin: "12px 0 8px", fontSize: 14}}>Generated samples</h4>
+        <h4 style={{margin: "12px 0 8px", fontSize: 15}}>Generated samples</h4>
         <div>
           {samples.map((s, i) => (
             <div key={i} className="ail-pred">
@@ -592,8 +592,8 @@ export default function AILabeling() {
           { value: "→ Review", label: "Recommended next step", tone: "ok" },
         ])}
 
-        <h4 style={{margin: "16px 0 8px", fontSize: 14}}>Rows the model is least confident about</h4>
-        <p style={{fontSize: 12.5, color: "var(--dash-text-muted)", marginBottom: 10}}>
+        <h4 style={{margin: "16px 0 8px", fontSize: 15}}>Rows the model is least confident about</h4>
+        <p style={{fontSize: 13.5, color: "var(--dash-text-muted)", marginBottom: 10}}>
           Labeling these manually has the highest impact on model accuracy — they're the ones the AI is most likely to get wrong.
         </p>
         <div>
@@ -618,7 +618,7 @@ export default function AILabeling() {
             );
           })}
           {candidates.length > 25 && (
-            <p style={{fontSize: 12, color: "var(--dash-text-muted)", marginTop: 8}}>
+            <p style={{fontSize: 13, color: "var(--dash-text-muted)", marginTop: 8}}>
               Showing first 25 of {candidates.length}.
             </p>
           )}
@@ -727,7 +727,7 @@ export default function AILabeling() {
 
               {providerPicker}
               {modelWarning && (
-                <p style={{ fontSize: 12, color: "var(--dash-warning)", marginTop: -8, marginBottom: 12 }}>
+                <p style={{ fontSize: 13, color: "var(--dash-warning)", marginTop: -8, marginBottom: 12 }}>
                   {modelWarning}
                 </p>
               )}

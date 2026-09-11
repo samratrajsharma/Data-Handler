@@ -30,10 +30,10 @@
   justify-content: center;
 }
 .image-card__img img { width: 100%; height: 100%; object-fit: cover; }
-.image-card__placeholder { font-size: 12px; color: var(--dash-text-muted); }
+.image-card__placeholder { font-size: 13px; color: var(--dash-text-muted); }
 .image-card__info { padding: 10px 12px; }
-.image-card__name { display: block; font-size: 12px; font-weight: 600; color: var(--dash-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.image-card__meta { display: block; font-size: 11px; color: var(--dash-text-muted); margin-top: 3px; }
+.image-card__name { display: block; font-size: 13px; font-weight: 600; color: var(--dash-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.image-card__meta { display: block; font-size: 12.5px; color: var(--dash-text-muted); margin-top: 3px; }
 .img-score { color: var(--dash-primary); font-weight: 600; }
 
 /* ── Drag & Drop Zone ── */
@@ -72,7 +72,7 @@
   padding: 12px 0;
 }
 .img-pagination__info {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--dash-text-muted);
 }
 
@@ -91,7 +91,7 @@
   border-radius: 20px;
   border: 1px solid var(--dash-border);
   background: var(--color-surface, var(--dash-surface));
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--dash-text-secondary);
   cursor: pointer;
@@ -130,7 +130,7 @@
   opacity: 0.6;
 }
 .cluster-stat-card__id {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--dash-text-secondary);
   margin-bottom: 4px;
@@ -142,7 +142,7 @@
   line-height: 1.1;
 }
 .cluster-stat-card__label {
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--dash-text-muted);
   margin-top: 2px;
 }
@@ -210,7 +210,7 @@
   padding: 20px 24px;
 }
 .img-modal__details h3 {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--dash-text);
   margin-bottom: 14px;
@@ -228,7 +228,7 @@
 }
 .img-modal__meta-label {
   display: block;
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--dash-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -236,7 +236,7 @@
 }
 .img-modal__meta-value {
   display: block;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--dash-text);
 }
@@ -260,15 +260,15 @@
   border: 1px solid var(--dash-border); border-radius: 12px; background: var(--dash-bg, var(--dash-surface)); }
 .pipe-step--done { border-color: var(--dash-border-strong); background: var(--tint); }
 .pipe-step__n { flex: 0 0 26px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
-  border-radius: 50%; background: var(--dash-primary, var(--tint)); color: var(--dash-text); font-weight: 700; font-size: 13px; }
+  border-radius: 50%; background: var(--dash-primary, var(--tint)); color: var(--dash-text); font-weight: 700; font-size: 14px; }
 .pipe-step--done .pipe-step__n { background: var(--tint); }
 .pipe-step__body { flex: 1; min-width: 0; }
-.pipe-step__title { font-weight: 700; font-size: 13.5px; color: var(--dash-text); }
-.pipe-step__sub { font-size: 11.5px; color: var(--dash-text-muted); margin-top: 2px; line-height: 1.35; }
+.pipe-step__title { font-weight: 700; font-size: 14.5px; color: var(--dash-text); }
+.pipe-step__sub { font-size: 12.5px; color: var(--dash-text-muted); margin-top: 2px; line-height: 1.35; }
 .pipe-step__action { flex: 0 0 auto; }
 .pipe__arrow { display: flex; align-items: center; color: var(--dash-text-muted); font-size: 18px; flex: 0 0 auto; }
-.pipe-tag { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+.pipe-tag { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; }
 .pipe-tag--ok { background: var(--tint); color: var(--dash-primary); }
 .pipe-tag--busy { background: var(--tint); color: var(--dash-primary, var(--dash-primary)); }
-.pipe__hint { margin-top: 12px; font-size: 12px; color: var(--dash-text-muted); }
+.pipe__hint { margin-top: 12px; font-size: 13px; color: var(--dash-text-muted); }
 @media (max-width: 760px) { .pipe__arrow { display: none; } }

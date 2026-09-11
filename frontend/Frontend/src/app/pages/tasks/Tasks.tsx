@@ -60,7 +60,7 @@ export default function Tasks() {
           <h3>Tasks ({total})</h3>
           <div style={{display:"flex", gap: 8}}>
             <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-              style={{padding: "6px 12px", background: "var(--dash-bg)", border: "1px solid var(--dash-border)", borderRadius: 8, color: "var(--dash-text)", fontSize: 13}}>
+              style={{padding: "6px 12px", background: "var(--dash-bg)", border: "1px solid var(--dash-border)", borderRadius: 8, color: "var(--dash-text)", fontSize: 14}}>
               <option value="">All status</option>
               <option value="pending">Pending</option>
               <option value="progress">In progress</option>
@@ -68,7 +68,7 @@ export default function Tasks() {
               <option value="failed">Failed</option>
             </select>
             <select value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setPage(0); }}
-              style={{padding: "6px 12px", background: "var(--dash-bg)", border: "1px solid var(--dash-border)", borderRadius: 8, color: "var(--dash-text)", fontSize: 13}}>
+              style={{padding: "6px 12px", background: "var(--dash-bg)", border: "1px solid var(--dash-border)", borderRadius: 8, color: "var(--dash-text)", fontSize: 14}}>
               <option value="">All types</option>
               <option value="structuring">Structuring</option>
               <option value="eda">EDA</option>
@@ -102,7 +102,7 @@ export default function Tasks() {
                         <div className="progress-bar" style={{flex: 1, maxWidth: 100}}>
                           <div className="progress-bar__fill" style={{width: `${Math.round((t.progress || 0) * 100)}%`}} />
                         </div>
-                        <span style={{fontSize: 12, color: "var(--dash-text-muted)"}}>{Math.round((t.progress || 0) * 100)}%</span>
+                        <span style={{fontSize: 13, color: "var(--dash-text-muted)"}}>{Math.round((t.progress || 0) * 100)}%</span>
                       </div>
                     </td>
                     <td>{new Date(t.created_at).toLocaleString()}</td>
@@ -117,7 +117,7 @@ export default function Tasks() {
         {total > 20 && (
           <div style={{display:"flex", justifyContent:"center", gap: 12, marginTop: 16}}>
             <button className="btn btn--sm btn--secondary" disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</button>
-            <span style={{fontSize: 13, color: "var(--dash-text-muted)", padding: "6px 0"}}>Page {page + 1} of {Math.ceil(total / 20)}</span>
+            <span style={{fontSize: 14, color: "var(--dash-text-muted)", padding: "6px 0"}}>Page {page + 1} of {Math.ceil(total / 20)}</span>
             <button className="btn btn--sm btn--secondary" disabled={(page + 1) * 20 >= total} onClick={() => setPage(page + 1)}>Next</button>
           </div>
         )}
@@ -127,7 +127,7 @@ export default function Tasks() {
         <div className="modal-overlay" onClick={() => setSelected(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2>Task Details</h2>
-            <div style={{display:"grid", gridTemplateColumns:"120px 1fr", gap: "8px 16px", fontSize: 13, marginBottom: 16}}>
+            <div style={{display:"grid", gridTemplateColumns:"120px 1fr", gap: "8px 16px", fontSize: 14, marginBottom: 16}}>
               <span style={{color: "var(--dash-text-muted)"}}>ID:</span><span style={{color: "var(--dash-text)"}}>{selected.id}</span>
               <span style={{color: "var(--dash-text-muted)"}}>Celery ID:</span><span style={{color: "var(--dash-text)", wordBreak: "break-all"}}>{selected.celery_task_id}</span>
               <span style={{color: "var(--dash-text-muted)"}}>Type:</span><span style={{color: "var(--dash-text)"}}>{selected.task_type}</span>
@@ -136,14 +136,14 @@ export default function Tasks() {
             </div>
             {selected.error && (
               <div style={{background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", borderRadius: 8, padding: 12, marginBottom: 16}}>
-                <strong style={{color: "var(--dash-danger)", fontSize: 13}}>Error:</strong>
-                <pre style={{fontSize: 12, color: "var(--dash-danger)", marginTop: 4, whiteSpace: "pre-wrap"}}>{selected.error}</pre>
+                <strong style={{color: "var(--dash-danger)", fontSize: 14}}>Error:</strong>
+                <pre style={{fontSize: 13, color: "var(--dash-danger)", marginTop: 4, whiteSpace: "pre-wrap"}}>{selected.error}</pre>
               </div>
             )}
             {Boolean(selected.result) && (
               <div>
-                <strong style={{fontSize: 13, color: "var(--dash-text)"}}>Result:</strong>
-                <pre style={{fontSize: 12, color: "var(--dash-text-secondary)", marginTop: 4, overflow: "auto", maxHeight: 200, whiteSpace: "pre-wrap"}}>
+                <strong style={{fontSize: 14, color: "var(--dash-text)"}}>Result:</strong>
+                <pre style={{fontSize: 13, color: "var(--dash-text-secondary)", marginTop: 4, overflow: "auto", maxHeight: 200, whiteSpace: "pre-wrap"}}>
                   {JSON.stringify(selected.result, null, 2)}
                 </pre>
               </div>

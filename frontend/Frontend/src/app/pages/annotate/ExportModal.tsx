@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { annotationApi } from "../../../shared/api/annotations";
+import { annotationApi, IMAGE_CENTRIC_FORMATS } from "../../../shared/api/annotations";
 import type {
   AnnotateSummary,
   ImageExportFormat,
@@ -16,12 +16,54 @@ interface Props {
   onSummaryChanged: () => void;
 }
 
-const FORMATS: { id: ImageExportFormat; title: string; desc: string }[] = [
-  { id: "yolo", title: "YOLO", desc: "YOLOv5/v8 txt + data.yaml" },
-  { id: "coco", title: "COCO", desc: "JSON per split" },
-  { id: "voc", title: "Pascal VOC", desc: "XML per image" },
-  { id: "classification", title: "Classification", desc: "folders + labels.csv" },
+/**
+ * Formats grouped by the job they are for, not alphabetically.
+ *
+ * Seven equal buttons in a grid is a wall — and picking the wrong one is not
+ * obvious until training goes badly. Grouping by task ("I am training a
+ * detector") turns the choice into two small decisions instead of one large
+ * one, and makes the segmentation-only formats impossible to reach by accident
+ * from a box-only dataset.
+ */
+const FORMAT_GROUPS: {
+  group: string;
+  formats: { id: ImageExportFormat; title: string; desc: string }[];
+}[] = [
+  {
+    group: "Object detection",
+    formats: [
+      { id: "yolo", title: "YOLO", desc: "YOLOv5/v8/v11 txt + data.yaml" },
+      { id: "coco", title: "COCO", desc: "JSON per split · keeps masks" },
+      { id: "voc", title: "Pascal VOC", desc: "XML per image" },
+      { id: "tfcsv", title: "TensorFlow CSV", desc: "csv + label_map.pbtxt" },
+      { id: "createml", title: "CreateML", desc: "Apple Vision JSON" },
+    ],
+  },
+  {
+    group: "Segmentation",
+    formats: [
+      { id: "segmentation", title: "Masks (PNG)", desc: "indexed label maps" },
+    ],
+  },
+  {
+    group: "Classification",
+    formats: [
+      { id: "classification", title: "Folders", desc: "class folders + labels.csv" },
+    ],
+  },
 ];
+
+/** Shown under the picker so the consequence of the choice is visible before
+ *  running a job that can take minutes. */
+const FORMAT_NOTE: Partial<Record<ImageExportFormat, string>> = {
+  coco: "The only format that stores painted masks losslessly — holes and disjoint regions survive.",
+  yolo: "Masks are written as polygons. Holes are lost; a mask with two blobs becomes two instances.",
+  voc: "Boxes only. Polygons and masks are reduced to their bounding box.",
+  tfcsv: "Boxes only. Polygons and masks are reduced to their bounding box.",
+  createml: "Boxes only, measured from the box centre. Polygons and masks are reduced.",
+  segmentation: "One 8-bit PNG per image; pixel value = class index + 1. Bounding boxes are not rasterised.",
+  classification: "Uses whole-image labels only. Boxes, polygons and masks are ignored.",
+};
 
 /** Export dialog: pick a format, optionally auto-split, run the export task. */
 export default function ExportModal({ datasetId, summary, onClose, onSummaryChanged }: Props) {
@@ -107,33 +149,55 @@ export default function ExportModal({ datasetId, summary, onClose, onSummaryChan
   };
 
   const splits = summary?.splits;
+  const imagesForced = IMAGE_CENTRIC_FORMATS.has(format);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal ann-export" onClick={(e) => e.stopPropagation()}>
         <h2>Export annotations</h2>
 
-        <div className="ann-export__formats">
-          {FORMATS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              className={`ann-export__fmt ${format === f.id ? "ann-export__fmt--active" : ""}`}
-              onClick={() => setFormat(f.id)}
-            >
-              <span className="ann-export__fmt-title">{f.title}</span>
-              <span className="ann-export__fmt-desc">{f.desc}</span>
-            </button>
-          ))}
-        </div>
+        {FORMAT_GROUPS.map((g) => (
+          <div key={g.group} className="ann-export__group">
+            <div className="ann-export__group-label">{g.group}</div>
+            <div className="ann-export__formats">
+              {g.formats.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  className={`ann-export__fmt ${format === f.id ? "ann-export__fmt--active" : ""}`}
+                  onClick={() => setFormat(f.id)}
+                >
+                  <span className="ann-export__fmt-title">{f.title}</span>
+                  <span className="ann-export__fmt-desc">{f.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
 
-        <label className="ann-export__check">
+        {FORMAT_NOTE[format] && (
+          <p className="ann-export__note">{FORMAT_NOTE[format]}</p>
+        )}
+
+        {/* The server forces images on for image-centric layouts, so the box is
+            shown checked and disabled rather than offering a choice that is
+            silently overridden. */}
+        <label
+          className={`ann-export__check ${imagesForced ? "ann-export__check--locked" : ""}`}
+          title={
+            imagesForced
+              ? "This format's label files reference images by path — the export is unusable without them."
+              : undefined
+          }
+        >
           <input
             type="checkbox"
-            checked={includeImages}
+            checked={imagesForced || includeImages}
+            disabled={imagesForced}
             onChange={(e) => setIncludeImages(e.target.checked)}
           />
           Include image files in the export
+          {imagesForced && <span className="ann-export__req"> — required by this format</span>}
         </label>
 
         <div className="ann-export__section">

@@ -28,13 +28,13 @@
   gap: 8px;
 }
 .txl-back {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--dash-text-muted);
   text-decoration: none;
 }
 .txl-back:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .txl-search {
   width: 100%;
@@ -43,7 +43,7 @@
   border: 1px solid var(--dash-border);
   border-radius: 8px;
   color: var(--dash-text);
-  font-size: 13px;
+  font-size: 14px;
 }
 .txl-search:focus {
   outline: none;
@@ -60,7 +60,7 @@
   border: 1px solid var(--dash-border);
   background: none;
   color: var(--dash-text-secondary);
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
@@ -71,7 +71,7 @@
 }
 .txl-filter--active {
   background: var(--accent-dim);
-  color: var(--accent);
+  color: var(--accent-text);
   border-color: var(--accent);
   font-weight: 600;
 }
@@ -129,7 +129,7 @@
   gap: 3px;
 }
 .txl-row__name {
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--dash-text);
   white-space: nowrap;
@@ -140,7 +140,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--dash-text-muted);
 }
 .txl-row__spans {
@@ -155,7 +155,7 @@
   gap: 4px;
 }
 .txl-row__chip {
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 700;
   border-radius: 4px;
   padding: 1px 5px;
@@ -187,7 +187,7 @@
   border-bottom: 1px solid var(--dash-border);
 }
 .txl-center__name {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--dash-text);
   white-space: nowrap;
@@ -196,7 +196,7 @@
   min-width: 0;
 }
 .txl-center__pos {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dash-text-muted);
   white-space: nowrap;
   margin-left: auto;
@@ -225,7 +225,7 @@
   border: 1px solid var(--dash-border);
   background: none;
   color: var(--dash-text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
@@ -238,7 +238,7 @@
   font-weight: 600;
 }
 .txl-kbd {
-  font-size: 9px;
+  font-size: 11px;
   font-family: inherit;
   border: 1px solid var(--dash-border);
   border-radius: 3px;
@@ -258,7 +258,7 @@
   white-space: pre-wrap;
   word-break: break-word;
   font-family: "SFMono-Regular", Consolas, "Roboto Mono", ui-monospace, "Cascadia Mono", monospace;
-  font-size: 13.5px;
+  font-size: 14.5px;
   line-height: 1.9;
   color: var(--dash-text);
 }
@@ -273,7 +273,7 @@
   outline-offset: 1px;
 }
 .txl-mark__label {
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 700;
   vertical-align: super;
   letter-spacing: 0.02em;
@@ -290,7 +290,7 @@
   margin-left: 4px;
   vertical-align: middle;
   line-height: 1;
-  font-size: 11px;
+  font-size: 12.5px;
   border-radius: 50%;
   border: 1px solid var(--dash-border-strong);
   background: var(--dash-surface);
@@ -332,7 +332,7 @@
   border: none;
   border-radius: 6px;
   color: var(--dash-text);
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 500;
   cursor: pointer;
   text-align: left;
@@ -352,7 +352,7 @@
   border: 1px solid var(--dash-border);
   border-radius: 8px;
   color: var(--dash-text);
-  font-size: 12.5px;
+  font-size: 13.5px;
 }
 .txl-pop__new input:focus {
   outline: none;
@@ -373,7 +373,7 @@
   padding: 14px 16px;
 }
 .txl-panel__title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--dash-text);
   margin-bottom: 10px;
@@ -382,7 +382,7 @@
   margin-bottom: 8px;
 }
 .txl-panel__group label {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .txl-classes {
@@ -403,7 +403,7 @@
 .txl-class__name {
   flex: 1;
   min-width: 0;
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--dash-text);
   white-space: nowrap;
@@ -411,7 +411,7 @@
   text-overflow: ellipsis;
 }
 .txl-class__count {
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--dash-text-muted);
   border: 1px solid var(--dash-border);
@@ -431,7 +431,7 @@
   border: 1px solid var(--dash-border);
   border-radius: 8px;
   color: var(--dash-text);
-  font-size: 12.5px;
+  font-size: 13.5px;
 }
 .txl-add input:focus {
   outline: none;
@@ -473,7 +473,7 @@
   gap: 2px;
 }
 .txl-ann__class {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--dash-text);
   display: flex;
@@ -481,12 +481,12 @@
   gap: 6px;
 }
 .txl-ann__kind {
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 500;
   color: var(--dash-text-muted);
 }
 .txl-ann__snippet {
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--dash-text-secondary);
   font-family: "SFMono-Regular", Consolas, ui-monospace, monospace;
   line-height: 1.4;
@@ -503,7 +503,7 @@
   height: 18px;
   padding: 0;
   line-height: 1;
-  font-size: 13px;
+  font-size: 14px;
   border: none;
   border-radius: 50%;
   background: none;
@@ -516,19 +516,19 @@
 }
 
 .txl-hint {
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--dash-text-muted);
   line-height: 1.5;
   margin-bottom: 10px;
 }
 .txl-file {
   width: 100%;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dash-text-secondary);
   margin-bottom: 10px;
 }
 .txl-muted {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dash-text-muted);
   line-height: 1.5;
 }

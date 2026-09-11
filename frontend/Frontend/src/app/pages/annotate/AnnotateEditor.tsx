@@ -11,6 +11,7 @@ import type {
   Split,
 } from "../../../shared/api/annotations";
 import { datasetApi } from "../../../shared/api/datasets";
+import { imageApi } from "../../../shared/api/images";
 import {
   HANDLE_IDS,
   clamp,
@@ -31,12 +32,19 @@ import {
 } from "./canvasGeometry";
 import type { HandleId, LocalAnnotation, ViewTransform } from "./canvasGeometry";
 import { useAnnotationHistory } from "./useAnnotationHistory";
+import Filmstrip from "./Filmstrip";
+import HelpSheet from "./HelpSheet";
+import LaunchGuide from "./LaunchGuide";
+import MaskLayer from "./MaskLayer";
+import type { MaskShape } from "./MaskLayer";
+import { maskToRle, rleToMask } from "./maskCodec";
+import { bufferIsEmpty, stampCircle, stampLine } from "./maskPaint";
 import ExportModal from "./ExportModal";
 import "./AnnotateEditor.css";
 
 // ── Constants / small types ──────────────────────────────────────────────
 
-type Tool = "select" | "bbox" | "polygon" | "pan";
+type Tool = "select" | "bbox" | "polygon" | "pan" | "crop" | "brush" | "eraser";
 type QueueFilter = "all" | ImageStatus;
 
 const MIN_SCALE = 0.05;
@@ -46,6 +54,61 @@ const HANDLE_HIT_PX = 8;
 const POLY_CLOSE_PX = 8;
 const MIN_DRAW_PX = 4;
 const FALLBACK_COLOR = "#94a3b8";
+
+// Left panel drag limits. The floor keeps class names legible; the ceiling
+// stops the panel eating the canvas, which is the space that actually matters.
+const SIDE_MIN = 220;
+const SIDE_MAX = 520;
+
+// ── Resumable progress ───────────────────────────────────────────────────
+// Which image you were last on, remembered per dataset so closing the tab and
+// coming back tomorrow does not drop you at image 1 of 900. Per browser, not
+// per server: it is a convenience, not shared state, and a stale value costs
+// nothing because a missing asset falls back to the head of the queue.
+const RESUME_KEY = "dh-ann-resume";
+
+// Whether the first-run guide has been dismissed, per dataset. Per dataset and
+// not global on purpose: someone confident with boxes meeting a segmentation
+// dataset for the first time still benefits from the prompt.
+const GUIDE_KEY = "dh-ann-guide-dismissed";
+
+function readGuideDismissed(datasetId: string): boolean {
+  try {
+    return JSON.parse(localStorage.getItem(GUIDE_KEY) || "{}")?.[datasetId] === true;
+  } catch {
+    return false;
+  }
+}
+
+function writeGuideDismissed(datasetId: string): void {
+  try {
+    const all = JSON.parse(localStorage.getItem(GUIDE_KEY) || "{}");
+    all[datasetId] = true;
+    localStorage.setItem(GUIDE_KEY, JSON.stringify(all));
+  } catch {
+    /* storage unavailable — the guide simply reappears next visit */
+  }
+}
+
+function readResume(datasetId: string): string | null {
+  try {
+    const all = JSON.parse(localStorage.getItem(RESUME_KEY) || "{}");
+    const v = all?.[datasetId];
+    return typeof v === "string" ? v : null;
+  } catch {
+    return null;   // private mode, or a value written by an older version
+  }
+}
+
+function writeResume(datasetId: string, assetId: string): void {
+  try {
+    const all = JSON.parse(localStorage.getItem(RESUME_KEY) || "{}");
+    all[datasetId] = assetId;
+    localStorage.setItem(RESUME_KEY, JSON.stringify(all));
+  } catch {
+    /* storage unavailable — resuming is a nicety, never a hard failure */
+  }
+}
 
 interface Rect {
   x: number;
@@ -59,14 +122,21 @@ type DragState =
   | { type: "draw-bbox"; startX: number; startY: number }
   | { type: "move"; clientId: string; startPx: number; startPy: number; before: LocalAnnotation[]; orig: LocalAnnotation; moved: boolean }
   | { type: "resize"; clientId: string; handle: HandleId; before: LocalAnnotation[]; orig: LocalAnnotation; moved: boolean }
-  | { type: "vertex"; clientId: string; index: number; before: LocalAnnotation[]; moved: boolean };
+  | { type: "vertex"; clientId: string; index: number; before: LocalAnnotation[]; moved: boolean }
+  // A brush/eraser stroke. `targetId` is the mask annotation being edited —
+  // null when the stroke is creating a new one. `before` is captured at
+  // mouse-down so the whole stroke is a single undo step, not one per stamp.
+  | { type: "paint"; targetId: string | null; erase: boolean; lastPx: number; lastPy: number; before: LocalAnnotation[]; painted: boolean };
 
-const FILTERS: { id: QueueFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "unannotated", label: "Unannotated" },
-  { id: "annotated", label: "Annotated" },
-  { id: "approved", label: "Approved" },
-  { id: "rejected", label: "Rejected" },
+// Filmstrip filters: plain status names. The workflow pipeline is shown once,
+// in the left sidebar — repeating it here made the strip busy and said the
+// same thing twice. Counts still appear so you can see where work is piling up.
+const FILTERS: { id: QueueFilter; label: string; hint: string }[] = [
+  { id: "all", label: "All", hint: "Every image in the dataset" },
+  { id: "unannotated", label: "Unannotated", hint: "Uploaded, not yet annotated" },
+  { id: "annotated", label: "Annotated", hint: "Annotated, waiting for review" },
+  { id: "approved", label: "Approved", hint: "Approved — included in exports" },
+  { id: "rejected", label: "Rejected", hint: "Excluded from exports" },
 ];
 
 // ── Inline SVG icons ─────────────────────────────────────────────────────
@@ -192,6 +262,78 @@ export default function AnnotateEditor() {
   const stageRef = useRef<HTMLDivElement | null>(null);
 
   const [showExport, setShowExport] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  // Lazily initialised so the localStorage read happens once, not on every
+  // render of a component that re-renders at pointer frequency.
+  const [guideDismissed, setGuideDismissed] = useState(() =>
+    dsId ? readGuideDismissed(dsId) : false
+  );
+
+  // ── View preferences ───────────────────────────────────────────────────
+  // Hide annotations to inspect the underlying pixels without overlays in the
+  // way — the usual reason is checking whether a box is actually tight.
+  const [showAnnotations, setShowAnnotations] = useState(true);
+
+  // When locked, the view is NOT re-fitted as you move between images. Zoom
+  // into a corner, lock, and step through the queue inspecting the same region
+  // on every image — without it, each image load snaps back to fit.
+  const [zoomLocked, setZoomLocked] = useState(false);
+
+  // Left panel width. Persisted per browser so the layout survives a reload;
+  // failures are swallowed because a private window that throws on
+  // localStorage must not take the editor down with it.
+  const [sideWidth, setSideWidth] = useState<number>(() => {
+    try {
+      const v = Number(localStorage.getItem("dh-ann-side-w"));
+      return v >= SIDE_MIN && v <= SIDE_MAX ? v : 300;
+    } catch { return 300; }
+  });
+  const resizingRef = useRef(false);
+
+  // Jump-to-image box: typed position, committed on Enter.
+  const [jumpValue, setJumpValue] = useState("");
+
+  // ── Tags ───────────────────────────────────────────────────────────────
+  // Workflow metadata about the image ("blurry", "recheck", "batch-3") — not
+  // classes, and never exported to training formats. Saved immediately on
+  // change rather than folded into the annotation save, because tagging is
+  // often the only thing a user does to an image and it should not require
+  // touching an annotation to persist.
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [knownTags, setKnownTags] = useState<string[]>([]);
+
+  // Display adjustments. These are a VIEWING aid only — they never touch the
+  // stored pixels, and are applied to the <img> alone so the annotation overlay
+  // keeps its true colours (washing out the boxes along with the photo would
+  // defeat the point of turning the contrast up to find a faint edge).
+  const [brightness, setBrightness] = useState(100);
+  const [contrast, setContrast] = useState(100);
+  const [showDisplay, setShowDisplay] = useState(false);
+  const displayAdjusted = brightness !== 100 || contrast !== 100;
+  const imgFilter = displayAdjusted
+    ? `brightness(${brightness}%) contrast(${contrast}%)`
+    : undefined;
+  const resetDisplay = useCallback(() => { setBrightness(100); setContrast(100); }, []);
+
+  // Crop awaiting confirmation. Held in state rather than applied on mouse-up
+  // because the operation overwrites the stored image — the one action in this
+  // editor that cannot be undone with Ctrl+Z.
+  const [pendingCrop, setPendingCrop] = useState<Rect | null>(null);
+  const [cropping, setCropping] = useState(false);
+
+  // ── Brush ──────────────────────────────────────────────────────────────
+  // Radius in IMAGE pixels, not screen pixels: a stroke must be the same
+  // thickness in the exported mask whether it was drawn at 25% or 400% zoom.
+  const [brushSize, setBrushSize] = useState(24);
+
+  // The in-progress stroke. Kept in a ref rather than state because it is
+  // mutated on every mousemove — routing a two-megapixel buffer through React
+  // state per event would make the brush unusable on a large image. The
+  // counter is what tells MaskLayer to repaint.
+  const liveBufRef = useRef<Uint8Array | null>(null);
+  const [liveVersion, setLiveVersion] = useState(0);
+  const [liveColor, setLiveColor] = useState(FALLBACK_COLOR);
 
   const { reset: historyReset, commit: historyCommit, undo: historyUndo, redo: historyRedo } =
     useAnnotationHistory();
@@ -199,11 +341,13 @@ export default function AnnotateEditor() {
   // Mirror of the state that stable window/keyboard handlers need.
   const latest = useRef({
     view, imgSize, annotations, tool, activeClassId, polyDraft, classes,
-    imgData, dirty, queueFilter, selectedId, draftRect, spaceHeld,
+    imgData, dirty, queueFilter, selectedId, draftRect, spaceHeld, zoomLocked, queue,
+    sideWidth, tags, queueTotal,
   });
   latest.current = {
     view, imgSize, annotations, tool, activeClassId, polyDraft, classes,
-    imgData, dirty, queueFilter, selectedId, draftRect, spaceHeld,
+    imgData, dirty, queueFilter, selectedId, draftRect, spaceHeld, zoomLocked, queue,
+    sideWidth, tags, queueTotal,
   };
 
   // ── Derived ────────────────────────────────────────────────────────────
@@ -223,7 +367,28 @@ export default function AnnotateEditor() {
   );
   const activeClass = activeClassId ? classMap.get(activeClassId) ?? null : null;
 
-  const shapes = useMemo(() => annotations.filter((a) => a.kind !== "classification"), [annotations]);
+  // Masks are excluded from `shapes`: that list drives the SVG overlay and its
+  // hit-testing, both of which assume vector geometry. Masks render on their
+  // own canvas layer and are listed separately in the side panel.
+  const shapes = useMemo(
+    () => annotations.filter((a) => a.kind !== "classification" && a.kind !== "mask"),
+    [annotations]
+  );
+  const maskAnnotations = useMemo(() => annotations.filter((a) => a.kind === "mask"), [annotations]);
+
+  /** What MaskLayer needs: the RLE, a colour, and whether it is selected. */
+  const maskShapes: MaskShape[] = useMemo(
+    () =>
+      maskAnnotations
+        .filter((a): a is LocalAnnotation & { mask: NonNullable<LocalAnnotation["mask"]> } => !!a.mask)
+        .map((a) => ({
+          clientId: a.clientId,
+          mask: a.mask,
+          color: clsColor(a.class_id),
+          selected: a.clientId === selectedId,
+        })),
+    [maskAnnotations, selectedId, clsColor]
+  );
   const classifications = useMemo(
     () => annotations.filter((a) => a.kind === "classification"),
     [annotations]
@@ -237,6 +402,38 @@ export default function AnnotateEditor() {
     () => [...shapes].sort((a, b) => shapeArea(b) - shapeArea(a)),
     [shapes]
   );
+
+  /**
+   * Progress through the first-run guide, derived entirely from real state —
+   * never from "the user has seen step N". The distinction matters: a counter
+   * would tick on a dataset someone else labelled, and would keep claiming
+   * step 2 is done after the annotation was deleted.
+   *
+   * "Drawn something" is true for an unsaved shape on the current image OR for
+   * anything already saved anywhere in the dataset, so the tick lands the
+   * moment the user draws rather than one action later.
+   */
+  const touchedAnywhere =
+    (summary?.annotated ?? 0) + (summary?.approved ?? 0) + (summary?.rejected ?? 0);
+  const guide = useMemo(
+    () => ({
+      hasClass: classes.length > 0,
+      hasAnnotation: annotations.length > 0 || touchedAnywhere > 0,
+      hasSaved: touchedAnywhere > 0,
+      hasApproved: (summary?.approved ?? 0) > 0,
+    }),
+    [classes.length, annotations.length, touchedAnywhere, summary?.approved]
+  );
+
+  // Stable identities: LaunchGuide is memoised, and a fresh inline arrow on
+  // every parent render would defeat that inside a component that re-renders
+  // at pointer frequency while drawing.
+  const dismissGuide = useCallback(() => {
+    setGuideDismissed(true);
+    if (dsId) writeGuideDismissed(dsId);
+  }, [dsId]);
+  const openShortcuts = useCallback(() => setShowHelp(true), []);
+  const closeShortcuts = useCallback(() => setShowHelp(false), []);
   const selected = useMemo(
     () => annotations.find((a) => a.clientId === selectedId) ?? null,
     [annotations, selectedId]
@@ -244,6 +441,37 @@ export default function AnnotateEditor() {
 
   const currentAssetId = imgData?.asset.id ?? null;
   const queueIndex = currentAssetId ? queue.findIndex((q) => q.asset_id === currentAssetId) : -1;
+
+  /** Previous/next within the CURRENTLY FILTERED queue.
+   *
+   *  Derived here rather than taken from imgData: the server computes
+   *  prev/next for the filter in force when the image was fetched, so changing
+   *  the filter used to require re-fetching the image just to refresh two ids.
+   *  That reload is what made clicking "Annotated" freeze and visibly reload
+   *  the picture you were already looking at.
+   *
+   *  The queue is already loaded and already ordered, so the neighbours are
+   *  just its adjacent entries. Falls back to the server's values when the
+   *  current image is not in the filtered queue (it was filtered out, but is
+   *  still on screen), which keeps navigation working instead of dead-ending. */
+  const neighbours = useMemo(() => {
+    if (queueIndex >= 0) {
+      return {
+        prev: queue[queueIndex - 1]?.asset_id ?? null,
+        next: queue[queueIndex + 1]?.asset_id ?? null,
+      };
+    }
+    return {
+      prev: imgData?.prev_asset_id ?? null,
+      next: imgData?.next_asset_id ?? null,
+    };
+  }, [queueIndex, queue, imgData]);
+
+  // Separate ref rather than a field on `latest`: that object literal is built
+  // above this point, so referencing `neighbours` there would evaluate it
+  // before initialisation and throw at runtime.
+  const neighboursRef = useRef(neighbours);
+  neighboursRef.current = neighbours;
   const noImages = bootstrapped && (summary?.total ?? 0) === 0;
 
   // ── Committing changes (history + dirty) ───────────────────────────────
@@ -325,7 +553,11 @@ export default function AnnotateEditor() {
         setDirty(false);
         const a = res.data.asset;
         setImgSize(a.width && a.height ? { W: a.width, H: a.height } : null);
+        setTags(res.data.tags ?? []);
+        setTagInput("");
         setParamsRef.current({ asset: assetId }, { replace: true });
+        // Remember where we are, so reopening this dataset resumes here.
+        writeResume(dsId, assetId);
       } catch {
         if (seq !== imageSeqRef.current) return;
         setImgError(true);
@@ -412,11 +644,168 @@ export default function AnnotateEditor() {
     [saveNow, loadImage]
   );
 
+  /** Jump straight to the Nth image in the current filtered queue (1-based).
+   *  Stepping with the arrows is fine for neighbours but useless for "go back
+   *  to roughly image 400 of 900". */
+  const jumpToIndex = useCallback(
+    (oneBased: number) => {
+      const q = latest.current.queue;
+      const i = Math.min(Math.max(1, Math.trunc(oneBased)), q.length) - 1;
+      const target = q[i];
+      if (target) void goTo(target.asset_id);
+    },
+    [goTo]
+  );
+
+  /** Copy every annotation from the previous image onto this one.
+   *
+   *  For sequences — video frames, a scanned batch, a conveyor — consecutive
+   *  images usually differ by a nudge, so re-drawing identical boxes is the
+   *  bulk of the work. Copy then adjust is far faster.
+   *
+   *  Fetched fresh rather than cached: the previous image may have been edited
+   *  in another tab, and a stale cache would silently paste old geometry.
+   *  Copies get new client ids and a null serverId so they save as NEW rows
+   *  rather than trying to update the previous image's annotation records.
+   *  ADDS to what is already here instead of replacing, so an accidental press
+   *  is undoable (Ctrl+Z) and never destroys existing work. */
+  const copyPreviousLabels = useCallback(async () => {
+    const prevId = latest.current.imgData?.prev_asset_id;
+    if (!prevId) return;
+    try {
+      const res = await annotationApi.getImageAnnotations(dsId, prevId);
+      const incoming = res.data.annotations.map(fromServer).map((a) => ({
+        ...a,
+        clientId: newClientId(),
+        serverId: null,
+      }));
+      if (incoming.length === 0) return;
+      // Don't duplicate a classification label that is already applied.
+      const existingCls = new Set(
+        latest.current.annotations.filter((a) => a.kind === "classification").map((a) => a.class_id)
+      );
+      const toAdd = incoming.filter(
+        (a) => a.kind !== "classification" || !existingCls.has(a.class_id)
+      );
+      if (toAdd.length === 0) return;
+      commitChange((prev) => [...prev, ...toAdd]);
+    } catch {
+      alert("Could not load the previous image's labels.");
+    }
+  }, [dsId, commitChange]);
+
+  /** Apply the pending crop: rewrites the stored image, remaps annotations.
+   *
+   *  Unsaved edits are flushed first. The backend remaps annotations from the
+   *  rows it has, so anything still only in browser memory would be silently
+   *  dropped — saving first makes what you see what gets remapped. */
+  const applyCrop = useCallback(async () => {
+    const r = pendingCrop;
+    const assetId = latest.current.imgData?.asset.id;
+    if (!r || !assetId) return;
+    setCropping(true);
+    try {
+      if (latest.current.dirty) {
+        const ok = await saveNow();
+        if (!ok) { alert("Could not save your annotations — crop cancelled."); return; }
+      }
+      const res = await imageApi.crop(dsId, assetId, { x: r.x, y: r.y, w: r.w, h: r.h });
+      setPendingCrop(null);
+      setTool("select");
+      // Reload from the server: dimensions, annotation geometry and the
+      // thumbnail have all changed underneath us.
+      await loadImage(assetId);
+      // Reload the filmstrip from the start so the regenerated thumbnail and
+      // the new annotation count are picked up.
+      void loadQueue(latest.current.queueFilter, 0);
+      const { annotations_dropped: dropped } = res.data;
+      if (dropped > 0) {
+        alert(`Cropped. ${dropped} annotation${dropped === 1 ? "" : "s"} fell outside the new frame and ${dropped === 1 ? "was" : "were"} removed.`);
+      }
+    } catch {
+      alert("Crop failed. The image has not been changed.");
+    } finally {
+      setCropping(false);
+    }
+  }, [pendingCrop, dsId, saveNow, loadImage, loadQueue]);
+
+  /** Approve every image that has been annotated but not yet reviewed.
+   *
+   *  Scoped to `annotated` rather than everything: approving images nobody has
+   *  opened would mark empty images as reviewed. Confirmed first because it is
+   *  a bulk state change with no undo. */
+  const approveAll = useCallback(async () => {
+    const pending = summary?.annotated ?? 0;
+    if (pending === 0) {
+      alert("No annotated images are waiting for approval.");
+      return;
+    }
+    if (!window.confirm(
+      `Approve ${pending} annotated image${pending === 1 ? "" : "s"}?\n\n` +
+      "Images that have not been annotated are left untouched. This cannot be undone."
+    )) return;
+    try {
+      if (latest.current.dirty) await saveNow();
+      const res = await annotationApi.bulkSetState(dsId, {
+        status: "approved",
+        only_status: "annotated",
+      });
+      refreshSummary();
+      void loadQueue(latest.current.queueFilter, 0);
+      // Reload so the header badge reflects the new status for this image too.
+      const cur = latest.current.imgData?.asset.id;
+      if (cur) await loadImage(cur);
+      alert(`Approved ${res.data.updated} image${res.data.updated === 1 ? "" : "s"}.`);
+    } catch {
+      alert("Bulk approve failed.");
+    }
+  }, [dsId, summary, saveNow, refreshSummary, loadQueue, loadImage]);
+
+  /** Persist the tag list for the current image and refresh the vocabulary. */
+  const saveTags = useCallback(
+    async (next: string[]) => {
+      const assetId = latest.current.imgData?.asset.id;
+      if (!assetId) return;
+      const prev = latest.current.tags;
+      setTags(next);                       // optimistic
+      try {
+        const res = await annotationApi.setImageTags(dsId, assetId, next);
+        // Trust the server's normalisation (lower-cased, de-duplicated,
+        // truncated) rather than the raw strings typed here, so what is shown
+        // matches what is stored.
+        setTags(res.data.tags);
+        annotationApi.listTags(dsId)
+          .then((r) => setKnownTags(r.data.tags.map((t) => t.tag)))
+          .catch(() => {});
+      } catch {
+        setTags(prev);                     // roll back
+        alert("Could not save tags.");
+      }
+    },
+    [dsId]
+  );
+
+  const addTag = useCallback(
+    (raw: string) => {
+      const value = raw.trim().toLowerCase();
+      if (!value) return;
+      if (latest.current.tags.includes(value)) { setTagInput(""); return; }
+      void saveTags([...latest.current.tags, value]);
+      setTagInput("");
+    },
+    [saveTags]
+  );
+
+  const removeTag = useCallback(
+    (tag: string) => void saveTags(latest.current.tags.filter((t) => t !== tag)),
+    [saveTags]
+  );
+
   const goPrev = useCallback(() => {
-    void goTo(latest.current.imgData?.prev_asset_id ?? null);
+    void goTo(neighboursRef.current.prev);
   }, [goTo]);
   const goNext = useCallback(() => {
-    void goTo(latest.current.imgData?.next_asset_id ?? null);
+    void goTo(neighboursRef.current.next);
   }, [goTo]);
 
   // ── Bootstrap ──────────────────────────────────────────────────────────
@@ -443,7 +832,20 @@ export default function AnnotateEditor() {
         setSummary(sumRes.data);
         setQueue(qRes.data.items);
         setQueueTotal(qRes.data.total);
-        const first = initialAssetRef.current || qRes.data.items[0]?.asset_id;
+        annotationApi.listTags(dsId)
+          .then((r) => { if (!cancelled) setKnownTags(r.data.tags.map((t) => t.tag)); })
+          .catch(() => {});
+        // Priority: an explicit ?asset= in the URL (someone shared a link to a
+        // specific image) > where this browser left off > the head of the
+        // queue. A remembered asset that is no longer in the queue (deleted,
+        // or filtered out) falls through to the first item rather than
+        // erroring.
+        const remembered = readResume(dsId);
+        const inQueue = remembered && qRes.data.items.some((i) => i.asset_id === remembered);
+        const first =
+          initialAssetRef.current ||
+          (inQueue ? remembered : null) ||
+          qRes.data.items[0]?.asset_id;
         if (first) await loadImage(first);
       } catch {
         if (!cancelled) alert("Failed to load annotation data for this dataset");
@@ -465,10 +867,57 @@ export default function AnnotateEditor() {
     setView(fitView(size.W, size.H, el.clientWidth, el.clientHeight));
   }, []);
 
-  // Fit on image load / change.
+  // Fit on image load / change — unless the user has locked the zoom, in which
+  // case the whole point is that the view survives navigation.
   useEffect(() => {
-    if (imgSize) fitToContainer();
+    if (imgSize && !latest.current.zoomLocked) fitToContainer();
   }, [imgSize, currentAssetId, fitToContainer]);
+
+  /** Drag the divider between the left panel and the canvas.
+   *
+   *  Listeners go on `window`, not the handle: the pointer routinely outruns a
+   *  6px target during a drag, and a handle-bound mousemove would drop it.
+   *  `userSelect: none` on the body stops the drag turning into a text
+   *  selection across the panel. */
+  const startResize = useCallback((e: RMouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    resizingRef.current = true;
+    const startX = e.clientX;
+    const startW = latest.current.sideWidth;
+    const prevSelect = document.body.style.userSelect;
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+
+    const onMove = (ev: MouseEvent) => {
+      if (!resizingRef.current) return;
+      const next = Math.min(SIDE_MAX, Math.max(SIDE_MIN, startW + (ev.clientX - startX)));
+      setSideWidth(next);
+    };
+    const onUp = () => {
+      resizingRef.current = false;
+      document.body.style.userSelect = prevSelect;
+      document.body.style.cursor = "";
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      // Persist only on release: writing on every mousemove would hammer
+      // localStorage for the whole drag.
+      try { localStorage.setItem("dh-ann-side-w", String(latest.current.sideWidth)); } catch { /* private mode */ }
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, []);
+
+  /** Back to 100%, centred. Distinct from Fit, which scales to the container. */
+  const resetZoom = useCallback(() => {
+    const el = containerRef.current;
+    const size = latest.current.imgSize;
+    if (!el || !size) return;
+    setView({
+      scale: 1,
+      tx: (el.clientWidth - size.W) / 2,
+      ty: (el.clientHeight - size.H) / 2,
+    });
+  }, []);
 
   const zoomAt = useCallback((cx: number, cy: number, factor: number) => {
     setView((v) => {
@@ -650,8 +1099,60 @@ export default function AnnotateEditor() {
     if (e.button !== 0) return;
     const [nx, ny] = toImagePoint(e.clientX, e.clientY);
 
-    if (tool === "bbox") {
-      if (!activeClassId) return;
+    // ── Brush / eraser ──
+    // A stroke edits ONE mask annotation. The target is the selected mask if
+    // there is one, otherwise the topmost mask of the active class, otherwise a
+    // new annotation. Painting always continues an existing mask where that is
+    // unambiguous, so repeated strokes build up one instance rather than
+    // littering the image with one annotation per stroke.
+    if (tool === "brush" || tool === "eraser") {
+      const L = latest.current;
+      if (!L.imgSize) return;
+      if (!L.activeClassId && tool === "brush") return;
+
+      const sel = L.annotations.find((a) => a.clientId === L.selectedId && a.kind === "mask");
+      const target =
+        sel ?? [...L.annotations].reverse().find((a) => a.kind === "mask" && a.class_id === L.activeClassId);
+
+      // The eraser only ever modifies something that exists.
+      if (tool === "eraser" && !target) return;
+
+      const { W: mw, H: mh } = L.imgSize;
+      const buf = new Uint8Array(mw * mh);
+      if (target?.mask) {
+        try {
+          buf.set(rleToMask(target.mask));
+        } catch {
+          // A mask that cannot be decoded (e.g. saved against a different
+          // image size after a crop) starts from blank rather than aborting
+          // the stroke.
+        }
+      }
+      liveBufRef.current = buf;
+      setLiveColor(target ? clsColor(target.class_id) : clsColor(L.activeClassId ?? ""));
+
+      const px = clamp01(nx) * mw;
+      const py = clamp01(ny) * mh;
+      stampCircle(buf, mw, mh, px, py, brushSize / 2, tool === "eraser" ? 0 : 1);
+      setLiveVersion((v) => v + 1);
+
+      dragRef.current = {
+        type: "paint",
+        targetId: target?.clientId ?? null,
+        erase: tool === "eraser",
+        lastPx: px,
+        lastPy: py,
+        before: L.annotations,
+        painted: true,
+      };
+      if (target) setSelectedId(target.clientId);
+      return;
+    }
+
+    // Crop reuses the box-drawing drag: same rubber band, different commit.
+    // It needs no active class, because it is not creating an annotation.
+    if (tool === "bbox" || tool === "crop") {
+      if (tool === "bbox" && !activeClassId) return;
       dragRef.current = { type: "draw-bbox", startX: clamp01(nx), startY: clamp01(ny) };
       setDraftRect({ x: clamp01(nx), y: clamp01(ny), w: 0, h: 0 });
       return;
@@ -743,6 +1244,25 @@ export default function AnnotateEditor() {
       const [rx, ry] = toImagePoint(e.clientX, e.clientY);
       const nx = clamp01(rx);
       const ny = clamp01(ry);
+
+      if (d.type === "paint") {
+        const buf = liveBufRef.current;
+        if (!buf) return;
+        const { W: mw, H: mh } = L.imgSize;
+        const px = nx * mw;
+        const py = ny * mh;
+        // Interpolate from the previous sample: mouse-move fires every ~8-16ms,
+        // so a quick drag skips tens of pixels and stamping only at the sampled
+        // points would leave a dotted line.
+        stampLine(buf, mw, mh, d.lastPx, d.lastPy, px, py, brushSize / 2, d.erase ? 0 : 1);
+        d.lastPx = px;
+        d.lastPy = py;
+        d.painted = true;
+        // Only the version counter goes through React; the buffer is mutated
+        // in place via the ref.
+        setLiveVersion((v) => v + 1);
+        return;
+      }
       if (d.type === "draw-bbox") {
         setDraftRect(rectFromPoints(d.startX, d.startY, nx, ny));
         setCursorPos([nx, ny]);
@@ -783,14 +1303,65 @@ export default function AnnotateEditor() {
       setPanning(false);
       return;
     }
+
+    // Encode the stroke once, on release — not per stamp. RLE encoding walks
+    // every pixel, so doing it during the drag would stall the brush.
+    if (d.type === "paint") {
+      const L = latest.current;
+      const buf = liveBufRef.current;
+      liveBufRef.current = null;
+      setLiveVersion((v) => v + 1);
+      if (!buf || !L.imgSize || !d.painted) return;
+
+      const { W: mw, H: mh } = L.imgSize;
+      const emptyNow = bufferIsEmpty(buf);
+
+      if (d.targetId) {
+        // Erasing a mask down to nothing removes the annotation rather than
+        // leaving an invisible zero-area row behind.
+        if (emptyNow) {
+          commitChange((prev) => prev.filter((a) => a.clientId !== d.targetId));
+          setSelectedId(null);
+          return;
+        }
+        const rle = maskToRle(buf, mh, mw);
+        commitChange((prev) =>
+          prev.map((a) => (a.clientId === d.targetId ? { ...a, mask: rle } : a))
+        );
+        return;
+      }
+
+      // A brand-new mask. A stroke that painted nothing (entirely off-image)
+      // is discarded instead of creating an empty annotation.
+      if (emptyNow || !L.activeClassId) return;
+      const ann: LocalAnnotation = {
+        clientId: newClientId(),
+        serverId: null,
+        class_id: L.activeClassId,
+        kind: "mask",
+        x: null, y: null, w: null, h: null, points: null,
+        mask: maskToRle(buf, mh, mw),
+      };
+      commitChange((prev) => [...prev, ann]);
+      setSelectedId(ann.clientId);
+      return;
+    }
+
     if (d.type === "draw-bbox") {
       const L = latest.current;
       const r = L.draftRect;
       setDraftRect(null);
-      if (!r || !L.imgSize || !L.activeClassId) return;
-      // Only commit boxes that are more than a slip of the mouse.
+      if (!r || !L.imgSize) return;
+      // Only act on boxes that are more than a slip of the mouse.
       if (r.w * L.imgSize.W * L.view.scale <= MIN_DRAW_PX) return;
       if (r.h * L.imgSize.H * L.view.scale <= MIN_DRAW_PX) return;
+      // Crop never commits straight from the drag: it rewrites stored pixels,
+      // so it goes through an explicit confirmation first.
+      if (L.tool === "crop") {
+        setPendingCrop(r);
+        return;
+      }
+      if (!L.activeClassId) return;
       const ann: LocalAnnotation = {
         clientId: newClientId(),
         serverId: null,
@@ -823,10 +1394,12 @@ export default function AnnotateEditor() {
   const actionsRef = useRef({
     saveNow, goPrev, goNext, doUndo, doRedo, deleteSelected, cancelOrDeselect,
     fitToContainer, zoomAtCenter, selectClass, toggleClassification, closePolygon,
+    resetZoom, copyPreviousLabels, resetDisplay,
   });
   actionsRef.current = {
     saveNow, goPrev, goNext, doUndo, doRedo, deleteSelected, cancelOrDeselect,
     fitToContainer, zoomAtCenter, selectClass, toggleClassification, closePolygon,
+    resetZoom, copyPreviousLabels, resetDisplay,
   };
 
   useEffect(() => {
@@ -851,6 +1424,14 @@ export default function AnnotateEditor() {
         else if (k === "y") { e.preventDefault(); A.doRedo(); }
         return;
       }
+      // "?" is Shift+/ on most layouts and arrives as e.key already resolved,
+      // so it is matched before the digit/class handling below rather than in
+      // the switch (where a Shift-modified key would be ambiguous).
+      if (e.key === "?") {
+        e.preventDefault();
+        setShowHelp(true);
+        return;
+      }
       const digit = /^Digit([1-9])$/.exec(e.code);
       if (digit) {
         const cls = latest.current.classes[Number(digit[1]) - 1];
@@ -865,7 +1446,26 @@ export default function AnnotateEditor() {
         case "b": case "B": setTool("bbox"); break;
         case "p": case "P": setTool("polygon"); break;
         case "h": case "H": setTool("pan"); break;
+        case "x": case "X": setTool("crop"); break;
+        case "g": case "G": setTool("brush"); break;
+        case "e": case "E": setTool("eraser"); break;
+        // Brush size, matching the bracket keys every raster editor uses.
+        case "[": setBrushSize((b) => Math.max(2, Math.round(b * 0.8))); break;
+        case "]": setBrushSize((b) => Math.min(400, Math.round(b * 1.25))); break;
         case "f": case "F": A.fitToContainer(); break;
+        // Review verdicts. saveNow(status) persists the annotations and sets
+        // the image's state in one round trip, so approving never loses an
+        // edit made a moment earlier.
+        case "a": case "A": e.preventDefault(); void A.saveNow("approved"); break;
+        case "r": case "R": e.preventDefault(); void A.saveNow("rejected"); break;
+        // Toggle overlays to check a box against the pixels underneath.
+        case "t": case "T": setShowAnnotations((s) => !s); break;
+        case "l": case "L": setZoomLocked((s) => !s); break;
+        case "0": A.resetZoom(); break;
+        // Copy the previous image's labels onto this one (adds, undoable).
+        case "c": case "C": e.preventDefault(); void A.copyPreviousLabels(); break;
+        // Clear brightness/contrast back to normal.
+        case "d": case "D": A.resetDisplay(); break;
         case "ArrowLeft": e.preventDefault(); A.goPrev(); break;
         case "ArrowRight": e.preventDefault(); A.goNext(); break;
         case "Delete": case "Backspace": e.preventDefault(); A.deleteSelected(); break;
@@ -922,28 +1522,61 @@ export default function AnnotateEditor() {
 
   // ── Filmstrip ──────────────────────────────────────────────────────────
 
-  const changeFilter = (f: QueueFilter) => {
-    if (f === queueFilter) return;
+  const changeFilter = useCallback((f: QueueFilter) => {
+    if (f === latest.current.queueFilter) return;
     setQueueFilter(f);
     latest.current.queueFilter = f;
-    loadQueue(f, 0).catch(() => {});
-    // Re-fetch the current image with the new filter so its prev/next ids
-    // navigate within the filtered queue (saving any pending edits first).
-    const cur = latest.current.imgData?.asset.id;
-    if (cur) void saveNow().then(() => loadImage(cur));
-  };
+    // Only the queue reloads. The image on screen stays exactly as it is —
+    // prev/next now come from the queue (see `neighbours`), so there is
+    // nothing left to re-fetch it for.
+    //
+    // The save must COMPLETE before the queue is queried, not merely be
+    // started. Saving is what moves this image from "unannotated" to
+    // "annotated"; firing both in parallel races the commit, and the queue
+    // usually wins — so you click "Annotated" immediately after drawing and
+    // get "No images match this filter" while the sidebar already counts 1.
+    // The summary refreshes after the save and disagrees with the strip,
+    // which reads as data loss rather than a race.
+    void (async () => {
+      if (latest.current.dirty) {
+        try { await saveNow(); } catch { /* surfaced by the save indicator */ }
+      }
+      await loadQueue(f, 0).catch(() => {});
+    })();
+  }, [loadQueue, saveNow]);
 
-  const onStripScroll = (e: RUIEvent<HTMLDivElement>) => {
+  /** Counts for the filter chips. Memoised so a new object each render does
+   *  not invalidate Filmstrip's memo. */
+  const filterCounts = useMemo(
+    () => ({
+      all: summary?.total,
+      unannotated: summary?.unannotated,
+      annotated: summary?.annotated,
+      approved: summary?.approved,
+      rejected: summary?.rejected,
+    }),
+    [summary]
+  );
+
+  /** Stable identity for the strip's click handler — an inline arrow would
+   *  change every render and make memo useless. */
+  const selectFromStrip = useCallback((assetId: string) => { void goTo(assetId); }, [goTo]);
+
+  // Stable identity (reads current values from the `latest` ref rather than
+  // closing over them) so passing it to the memoised Filmstrip does not cause
+  // a re-render on every parent update.
+  const onStripScroll = useCallback((e: RUIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
     if (el.scrollLeft + el.clientWidth < el.scrollWidth - 60) return;
-    if (loadMoreRef.current || queue.length >= queueTotal) return;
+    const L = latest.current;
+    if (loadMoreRef.current || L.queue.length >= L.queueTotal) return;
     loadMoreRef.current = true;
-    loadQueue(queueFilter, queue.length)
+    loadQueue(L.queueFilter, L.queue.length)
       .catch(() => {})
       .finally(() => {
         loadMoreRef.current = false;
       });
-  };
+  }, [loadQueue]);
 
   // Keep the current thumbnail visible.
   useEffect(() => {
@@ -1122,9 +1755,14 @@ export default function AnnotateEditor() {
     ? "grabbing"
     : spaceHeld || tool === "pan"
       ? "grab"
-      : tool === "bbox" || tool === "polygon"
+      : tool === "bbox" || tool === "polygon" || tool === "crop"
         ? "crosshair"
-        : hoverCursor;
+        // Crosshair for paint tools too. A true brush-sized ring cursor would
+        // need a generated SVG cursor that tracks both brush size and zoom;
+        // the size readout in the zoom bar covers it for now.
+        : tool === "brush" || tool === "eraser"
+          ? "crosshair"
+          : hoverCursor;
 
   const imgUrl = imgData ? imgData.asset.original_url || imgData.asset.thumbnail_url || "" : "";
   const saveLabel = saving ? "Saving…" : dirty ? "Unsaved •" : "Saved ✓";
@@ -1137,6 +1775,9 @@ export default function AnnotateEditor() {
     { id: "bbox", label: "Bounding box (B)", icon: ICONS.bbox },
     { id: "polygon", label: "Polygon (P)", icon: ICONS.polygon },
     { id: "pan", label: "Pan (H)", icon: ICONS.pan },
+    { id: "crop", label: "Crop (X) — replaces the stored image", icon: "⤧" },
+    { id: "brush", label: "Brush (G) — paint a segmentation mask", icon: "🖌" },
+    { id: "eraser", label: "Eraser (E) — erase from a mask", icon: "🩹" },
   ];
 
   return (
@@ -1145,16 +1786,64 @@ export default function AnnotateEditor() {
       <header className="ann-header">
         <Link to="/annotate" className="ann-header__back">&larr; Annotate</Link>
         <div className="ann-header__name" title={datasetName}>{datasetName || "…"}</div>
+        {/* Second spacer. With only the one further down, everything was pinned
+            to the two edges and the navigation sat cramped on the left with the
+            whole middle of the header empty. A spacer either side centres the
+            controls you actually use while labelling. */}
+        <div className="ann-header__spacer" />
         <div className="ann-header__nav">
+          {/* Prev stays an icon; Next is labelled and accented.
+              They are not equally important. In an annotation loop you label an
+              image and move FORWARD — "next" is the most-pressed control in the
+              whole tool, and it was a 24px box holding a &rsaquo;, a glyph
+              barely larger than a comma. Going back is the rare correction, so
+              it keeps the compact icon and Next gets the weight. */}
           <button
-            className="ann-header__navbtn" title="Previous image (←)"
-            onClick={goPrev} disabled={!imgData?.prev_asset_id}
-          >&lsaquo;</button>
+            className="ann-navbtn" title="Previous image (←)"
+            onClick={goPrev} disabled={!neighbours.prev}
+            aria-label="Previous image"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
           <span className="ann-header__pos">{position}</span>
           <button
-            className="ann-header__navbtn" title="Next image (→)"
-            onClick={goNext} disabled={!imgData?.next_asset_id}
-          >&rsaquo;</button>
+            className="ann-navbtn ann-navbtn--next" title="Next image (→)"
+            onClick={goNext} disabled={!neighbours.next}
+          >
+            Next
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
+          {/* Type a position and press Enter. Arrows are fine for neighbours
+              but useless for "back to around image 400 of 900". */}
+          <input
+            className="ann-header__jump"
+            type="number"
+            min={1}
+            max={queue.length || 1}
+            placeholder="#"
+            value={jumpValue}
+            onChange={(e) => setJumpValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              const n = Number(jumpValue);
+              if (Number.isFinite(n) && n >= 1) {
+                jumpToIndex(n);
+                setJumpValue("");
+                // Return focus to the canvas so the single-key shortcuts work
+                // again — they are ignored while an input has focus.
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            title="Jump to image number (Enter)"
+            disabled={queue.length === 0}
+          />
         </div>
         <span className={`ann-save ann-save--${saveMod}`}>{saveLabel}</span>
         {imgData && (
@@ -1186,13 +1875,49 @@ export default function AnnotateEditor() {
           onClick={() => void saveNow("rejected")} disabled={!imgData}
           title="Save and mark this image rejected"
         >Reject</button>
+        {/* Dataset-level actions, separated from the per-image ones to its
+            left. "Approve" and "Approve all" sitting shoulder to shoulder is a
+            misclick waiting to happen, and only one of them is reversible. */}
+        <span className="ann-header__div" aria-hidden="true" />
+        <button
+          className="ann-approveall"
+          onClick={() => void approveAll()}
+          disabled={(summary?.annotated ?? 0) === 0}
+          title={
+            (summary?.annotated ?? 0) > 0
+              ? `Approve all ${summary?.annotated} annotated images`
+              : "Nothing annotated is waiting for approval"
+          }
+        >
+          Approve all ({summary?.annotated ?? 0})
+        </button>
+        <button
+          className="ann-helpbtn"
+          onClick={() => setShowHelp(true)}
+          title="Keyboard shortcuts (?)"
+          aria-label="Keyboard shortcuts"
+        >?</button>
         <button className="btn btn--sm btn--primary" onClick={() => setShowExport(true)}>
           Export
         </button>
       </header>
 
+      {/* VISUAL ORDER IS SET IN CSS, NOT HERE.
+          Layout is: classes panel (left) → resizer → canvas → tool rail (right).
+          Classes sit left because they are read constantly; tools sit right,
+          under the hand that reaches for them. Both used to be crowded on the
+          left, which left the middle of the window empty and squeezed the
+          image.
+
+          `order` on .ann-side/.ann-resizer/.ann-center/.ann-toolbar does the
+          rearranging so this 1600-line file did not need its JSX shuffled —
+          a change with real regression risk and no test coverage to catch it.
+          The cost is that DOM order (tools, canvas, panel) no longer matches
+          visual order, so keyboard tab order differs from what you see. Low
+          impact for a canvas tool driven by shortcuts, but worth fixing by
+          moving the JSX if this file is ever refactored. */}
       <div className="ann-body">
-        {/* ── Tool rail ── */}
+        {/* ── Tool rail (rendered here, displayed right) ── */}
         <div className="ann-toolbar">
           {TOOL_BUTTONS.map((t) => (
             <button
@@ -1205,19 +1930,29 @@ export default function AnnotateEditor() {
             </button>
           ))}
           <div className="ann-toolbar__sep" />
-          <button className="ann-tool" title="Zoom in (+)" onClick={() => zoomAtCenter(1.25)}>
-            {ICONS.zoomIn}
+          {/* Overlay visibility lives with the tools, not the zoom bar: it
+              changes what you are editing, not how you are looking at it. */}
+          <button
+            className={`ann-tool ${showAnnotations ? "" : "ann-tool--off"}`}
+            title={showAnnotations ? "Hide annotations (T)" : "Show annotations (T)"}
+            onClick={() => setShowAnnotations((v) => !v)}
+          >
+            {showAnnotations ? "◉" : "◎"}
           </button>
-          <button className="ann-tool" title="Zoom out (−)" onClick={() => zoomAtCenter(0.8)}>
-            {ICONS.zoomOut}
-          </button>
-          <button className="ann-tool" title="Fit to screen (F)" onClick={fitToContainer}>
-            {ICONS.fit}
-          </button>
-          <div className="ann-toolbar__zoom">{Math.round(s * 100)}%</div>
         </div>
 
-        {/* ── Center: classification bar + canvas ── */}
+        {/* Drag to rebalance panel vs canvas. */}
+        <div
+          className="ann-resizer"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize panel"
+          onMouseDown={startResize}
+          onDoubleClick={() => setSideWidth(300)}
+          title="Drag to resize · double-click to reset"
+        />
+
+        {/* ── Center: classification bar + canvas + zoom bar ── */}
         <div className="ann-center">
           {classes.length > 0 && (
             <div className="ann-clsbar">
@@ -1259,6 +1994,9 @@ export default function AnnotateEditor() {
                   src={imgUrl}
                   alt={imgData?.asset.file_name ?? ""}
                   draggable={false}
+                  // Filter is on the image only — the SVG overlay is a sibling,
+                  // so annotation colours stay true while the photo is adjusted.
+                  style={imgFilter ? { filter: imgFilter } : undefined}
                   {...(imgSize ? { width: W, height: H } : {})}
                   onLoad={(e) => {
                     setImgReady(true);
@@ -1273,12 +2011,33 @@ export default function AnnotateEditor() {
                 />
               )}
 
+              {/* Masks render below the vector overlay so boxes and polygons
+                  stay visible on top of a painted region. Separate element
+                  rather than a sibling inside the overlay's conditional: this
+                  is a <canvas>, the overlay is an <svg>, and they need
+                  different sizing. */}
+              {imgSize && (
+                <MaskLayer
+                  width={W}
+                  height={H}
+                  shapes={maskShapes}
+                  liveBuffer={liveBufRef.current}
+                  liveColor={liveColor}
+                  liveVersion={liveVersion}
+                  visible={showAnnotations}
+                />
+              )}
+
               {imgSize && (
                 <svg
                   className="ann-overlay"
                   viewBox={`0 0 ${W} ${H}`}
                   width={W}
                   height={H}
+                  // Hidden rather than unmounted: the draft shape being drawn
+                  // and the drag handles live in this same <svg>, and tearing
+                  // them out mid-interaction would abort an in-progress draw.
+                  style={showAnnotations ? undefined : { opacity: 0, pointerEvents: "none" }}
                 >
                   {/* committed shapes: big → small so small ones sit on top */}
                   {sortedShapes
@@ -1352,8 +2111,11 @@ export default function AnnotateEditor() {
               <div className="ann-guard">
                 <div className="ann-guard__box">
                   <div className="ann-guard__title">Add a class to start annotating</div>
+                  {/* Arrow leads, pointing LEFT: the classes panel moved to the
+                      left side, and this hint still nudged users to the right —
+                      straight at the tool rail. */}
                   <div className="ann-guard__hint">
-                    Use the &quot;New class name&quot; field in the panel <span className="ann-guard__arrow">&rarr;</span>
+                    <span className="ann-guard__arrow">&larr;</span> Use the &quot;New class name&quot; field in the panel
                   </div>
                 </div>
               </div>
@@ -1376,10 +2138,116 @@ export default function AnnotateEditor() {
               </div>
             )}
           </div>
+
+          {/* ── Zoom bar ──
+              Moved off the tool rail and under the canvas: zoom is a property
+              of the view, not a drawing tool, and the percentage belongs next
+              to the controls that change it. */}
+          <div className="ann-zoombar">
+            <button className="ann-zbtn" title="Zoom out (−)" onClick={() => zoomAtCenter(0.8)}>−</button>
+            {/* The percentage doubles as the reset control: clicking a zoom
+                readout to return to 100% is the convention, and it removes a
+                separate button from a bar that had grown to eight of them. */}
+            <button
+              className="ann-zoombar__pct"
+              title="Click for actual size, 100% (0)"
+              onClick={resetZoom}
+            >
+              {Math.round(s * 100)}%
+            </button>
+            <button className="ann-zbtn" title="Zoom in (+)" onClick={() => zoomAtCenter(1.25)}>+</button>
+            <div className="ann-zoombar__sep" />
+            <button className="ann-zbtn ann-zbtn--wide" title="Fit to screen (F)" onClick={fitToContainer}>Fit</button>
+            {/* Icon-only: the label was the widest thing in the bar, and the
+                state is already obvious from the icon plus the active style. */}
+            <button
+              className={`ann-zbtn ${zoomLocked ? "ann-zbtn--on" : ""}`}
+              title={
+                zoomLocked
+                  ? "Zoom locked — this view is kept when you change image (L)"
+                  : "Lock zoom — keep this view when changing image (L)"
+              }
+              onClick={() => setZoomLocked((v) => !v)}
+            >
+              {zoomLocked ? "🔒" : "🔓"}
+            </button>
+
+            {/* Brush size, shown only while a paint tool is active so the bar
+                stays quiet the rest of the time. Bracket keys adjust it too. */}
+            {(tool === "brush" || tool === "eraser") && (
+              <>
+                <div className="ann-zoombar__sep" />
+                <label className="ann-brushsize" title="Brush size in image pixels ( [ and ] )">
+                  <span>{tool === "eraser" ? "Eraser" : "Brush"}</span>
+                  <input
+                    type="range" min={2} max={200} step={1}
+                    value={brushSize}
+                    onChange={(e) => setBrushSize(Number(e.target.value))}
+                  />
+                  <b>{brushSize}px</b>
+                </label>
+              </>
+            )}
+
+            <div className="ann-zoombar__sep" />
+
+            {/* Display adjustments. Popover rather than always-on sliders: they
+                are reached occasionally, and two permanent sliders would eat
+                the bar for a control most sessions never touch. */}
+            <div className="ann-display">
+              <button
+                className={`ann-zbtn ann-zbtn--wide ${displayAdjusted ? "ann-zbtn--on" : ""}`}
+                title="Brightness and contrast (viewing only — the image is not modified)"
+                onClick={() => setShowDisplay((v) => !v)}
+              >
+                Display{displayAdjusted ? " •" : ""}
+              </button>
+              {showDisplay && (
+                <div className="ann-display__pop">
+                  <label className="ann-display__row">
+                    <span>Brightness</span>
+                    <input
+                      type="range" min={20} max={250} step={1}
+                      value={brightness}
+                      onChange={(e) => setBrightness(Number(e.target.value))}
+                    />
+                    <b>{brightness}%</b>
+                  </label>
+                  <label className="ann-display__row">
+                    <span>Contrast</span>
+                    <input
+                      type="range" min={20} max={250} step={1}
+                      value={contrast}
+                      onChange={(e) => setContrast(Number(e.target.value))}
+                    />
+                    <b>{contrast}%</b>
+                  </label>
+                  <div className="ann-display__foot">
+                    <span className="ann-display__note">Viewing only — pixels are unchanged.</span>
+                    <button className="ann-zbtn" onClick={resetDisplay} title="Reset (D)">Reset</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* ── Right panel ── */}
-        <aside className="ann-side">
+        {/* ── Class / annotation panel (rendered here, displayed LEFT) ── */}
+        <aside className="ann-side" style={{ flexBasis: sideWidth, width: sideWidth }}>
+          {/* First-run guide. Every tick is derived from real state, and the
+              whole block removes itself once the four steps are done — so a
+              returning user pays nothing for it. */}
+          {!guideDismissed && (
+            <LaunchGuide
+              hasClass={guide.hasClass}
+              hasAnnotation={guide.hasAnnotation}
+              hasSaved={guide.hasSaved}
+              hasApproved={guide.hasApproved}
+              onDismiss={dismissGuide}
+              onShowShortcuts={openShortcuts}
+            />
+          )}
+
           {/* Classes */}
           <div className="ann-side__section">
             <div className="ann-side__title">Classes</div>
@@ -1430,7 +2298,23 @@ export default function AnnotateEditor() {
 
           {/* Annotations on this image */}
           <div className="ann-side__section">
-            <div className="ann-side__title">Annotations ({shapes.length})</div>
+            <div className="ann-side__titlerow">
+              <div className="ann-side__title">
+                Annotations ({shapes.length + maskAnnotations.length})
+              </div>
+              <button
+                className="ann-copyprev"
+                onClick={() => void copyPreviousLabels()}
+                disabled={!imgData?.prev_asset_id}
+                title={
+                  imgData?.prev_asset_id
+                    ? "Copy the previous image's labels onto this one (C) — adds, and is undoable"
+                    : "No previous image"
+                }
+              >
+                Copy previous
+              </button>
+            </div>
             <div className="ann-anns">
               {shapes.map((a) => (
                 <div
@@ -1440,7 +2324,34 @@ export default function AnnotateEditor() {
                 >
                   <span className="ann-row__glyph">{kindGlyph(a.kind)}</span>
                   <span className="ann-class__dot" style={{ background: clsColor(a.class_id) }} />
-                  <span className="ann-row__name">{clsName(a.class_id)}</span>
+                  {/* Relabel in place — but ONLY on the selected row.
+                      A dropdown on all ten rows turned the list into a form
+                      and was the single biggest source of visual noise in the
+                      panel. Unselected rows show plain text; selecting a row
+                      is already how you act on an annotation, so the control
+                      appears exactly when it is usable.
+                      stopPropagation so opening it doesn't re-fire the row's
+                      own select handler. */}
+                  {selectedId === a.clientId ? (
+                    <select
+                      className="ann-row__class"
+                      value={a.class_id}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        const classId = e.target.value;
+                        commitChange((prev) =>
+                          prev.map((x) => (x.clientId === a.clientId ? { ...x, class_id: classId } : x))
+                        );
+                      }}
+                      title="Change this annotation's class"
+                    >
+                      {classes.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="ann-row__name">{clsName(a.class_id)}</span>
+                  )}
                   <span className="ann-row__size">{(shapeArea(a) * 100).toFixed(1)}%</span>
                   <button
                     className="ann-row__x" title="Delete annotation"
@@ -1448,9 +2359,47 @@ export default function AnnotateEditor() {
                   >&times;</button>
                 </div>
               ))}
-              {shapes.length === 0 && (
+              {/* Masks are listed here but not in `shapes`: they have no vector
+                  geometry to hit-test, so they are selected from this list or
+                  by painting over them. */}
+              {maskAnnotations.map((a) => (
+                <div
+                  key={a.clientId}
+                  className={`ann-row ${selectedId === a.clientId ? "ann-row--selected" : ""}`}
+                  onClick={() => setSelectedId(a.clientId)}
+                >
+                  <span className="ann-row__glyph" title="Segmentation mask">▦</span>
+                  <span className="ann-class__dot" style={{ background: clsColor(a.class_id) }} />
+                  {selectedId === a.clientId ? (
+                    <select
+                      className="ann-row__class"
+                      value={a.class_id}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        const classId = e.target.value;
+                        commitChange((prev) =>
+                          prev.map((x) => (x.clientId === a.clientId ? { ...x, class_id: classId } : x))
+                        );
+                      }}
+                      title="Change this mask's class"
+                    >
+                      {classes.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="ann-row__name">{clsName(a.class_id)}</span>
+                  )}
+                  <span className="ann-row__size">mask</span>
+                  <button
+                    className="ann-row__x" title="Delete mask"
+                    onClick={(e) => { e.stopPropagation(); deleteAnnotation(a.clientId); }}
+                  >&times;</button>
+                </div>
+              ))}
+              {shapes.length === 0 && maskAnnotations.length === 0 && (
                 <div className="ann-side__empty">
-                  No shapes yet — press B and drag on the image.
+                  No shapes yet — press B and drag, or G to paint a mask.
                 </div>
               )}
             </div>
@@ -1476,6 +2425,51 @@ export default function AnnotateEditor() {
                 </div>
               </>
             )}
+          </div>
+
+          {/* Tags — image metadata, not training labels. Kept visually
+              separate from Classes so the distinction is obvious at a glance. */}
+          <div className="ann-side__section">
+            <div className="ann-side__title">Tags</div>
+            <div className="ann-tags">
+              {tags.map((t) => (
+                <span key={t} className="ann-tag">
+                  {t}
+                  <button
+                    className="ann-tag__x"
+                    onClick={() => removeTag(t)}
+                    title={`Remove "${t}"`}
+                  >&times;</button>
+                </span>
+              ))}
+              {tags.length === 0 && (
+                <span className="ann-side__empty">No tags on this image.</span>
+              )}
+            </div>
+            <input
+              className="ann-tag-add"
+              list="ann-tag-vocab"
+              placeholder="Add a tag, press Enter"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); addTag(tagInput); }
+                // Backspace on an empty box removes the last tag, the
+                // convention every tag input uses.
+                else if (e.key === "Backspace" && !tagInput && tags.length) {
+                  e.preventDefault();
+                  removeTag(tags[tags.length - 1]);
+                }
+              }}
+              disabled={!imgData}
+            />
+            {/* Native datalist: autocomplete against tags already in this
+                dataset, with no dependency and no custom popup to manage. */}
+            <datalist id="ann-tag-vocab">
+              {knownTags.filter((t) => !tags.includes(t)).map((t) => (
+                <option key={t} value={t} />
+              ))}
+            </datalist>
           </div>
 
           {/* Progress */}
@@ -1509,46 +2503,67 @@ export default function AnnotateEditor() {
         </aside>
       </div>
 
-      {/* ── Filmstrip ── */}
-      <div className="ann-strip">
-        <div className="ann-strip__filters">
-          {FILTERS.map((f) => (
-            <button
-              key={f.id}
-              className={`ann-fchip ${queueFilter === f.id ? "ann-fchip--active" : ""}`}
-              onClick={() => changeFilter(f.id)}
-            >
-              {f.label}
-            </button>
-          ))}
-          <span className="ann-strip__total">{queueTotal} images</span>
+      {/* ── Filmstrip ──
+          Extracted and memoised: 100 thumbnails re-reconciling on every
+          pointer move was what made the filter buttons feel sticky. */}
+      <Filmstrip
+        filters={FILTERS}
+        activeFilter={queueFilter}
+        counts={filterCounts}
+        queue={queue}
+        queueTotal={queueTotal}
+        currentAssetId={currentAssetId}
+        statusLabel={STATUS_LABEL}
+        onChangeFilter={changeFilter}
+        onSelect={selectFromStrip}
+        onScroll={onStripScroll}
+        stripRef={stripRef}
+      />
+
+      {showHelp && <HelpSheet onClose={closeShortcuts} />}
+
+      {/* ── Crop confirmation ──
+          Deliberately a blocking, explicit dialog. Crop overwrites the stored
+          image and is the only action here Ctrl+Z cannot reverse, so it states
+          the new size, warns when annotations will be lost, and says plainly
+          where the untouched original goes. */}
+      {pendingCrop && imgSize && (
+        <div className="ann-modal" onClick={() => !cropping && setPendingCrop(null)}>
+          <div className="ann-modal__box" onClick={(e) => e.stopPropagation()}>
+            <div className="ann-modal__title">Crop this image?</div>
+            <div className="ann-modal__body">
+              <p>
+                The image will be cropped to{" "}
+                <b>
+                  {Math.round(pendingCrop.w * imgSize.W)} × {Math.round(pendingCrop.h * imgSize.H)}
+                </b>{" "}
+                (from {imgSize.W} × {imgSize.H}).
+              </p>
+              <p className="ann-modal__warn">
+                This <b>replaces the stored image</b> and cannot be undone from the editor.
+                Annotations are moved into the new frame; any that fall entirely
+                outside it are deleted.
+              </p>
+              <p className="ann-modal__note">
+                A copy of the untouched original is kept in storage under{" "}
+                <code>_originals/</code>.
+              </p>
+            </div>
+            <div className="ann-modal__actions">
+              <button
+                className="btn btn--sm btn--secondary"
+                onClick={() => setPendingCrop(null)}
+                disabled={cropping}
+              >Cancel</button>
+              <button
+                className="btn btn--sm btn--primary"
+                onClick={() => void applyCrop()}
+                disabled={cropping}
+              >{cropping ? "Cropping…" : "Crop image"}</button>
+            </div>
+          </div>
         </div>
-        <div className="ann-strip__scroll" ref={stripRef} onScroll={onStripScroll}>
-          {queue.map((q) => (
-            <button
-              key={q.asset_id}
-              data-asset={q.asset_id}
-              className={`ann-thumb ann-thumb--${q.status} ${
-                q.asset_id === currentAssetId ? "ann-thumb--current" : ""
-              }`}
-              title={`${q.file_name} — ${STATUS_LABEL[q.status]}${q.split ? ` (${q.split})` : ""}`}
-              onClick={() => void goTo(q.asset_id)}
-            >
-              {q.thumbnail_url ? (
-                <img src={q.thumbnail_url} alt={q.file_name} loading="lazy" draggable={false} />
-              ) : (
-                <span className="ann-thumb__ph">{q.file_name.charAt(0).toUpperCase()}</span>
-              )}
-              {q.annotation_count > 0 && (
-                <span className="ann-thumb__count">{q.annotation_count}</span>
-              )}
-            </button>
-          ))}
-          {queue.length === 0 && (
-            <div className="ann-strip__empty">No images match this filter.</div>
-          )}
-        </div>
-      </div>
+      )}
 
       {showExport && (
         <ExportModal

@@ -103,7 +103,7 @@ export default function Workflows() {
                           <div className="progress-bar" style={{flex: 1, maxWidth: 120}}>
                             <div className="progress-bar__fill" style={{width: `${w.total_steps ? (w.current_step / w.total_steps) * 100 : 0}%`}} />
                           </div>
-                          <span style={{fontSize: 12, color: "var(--dash-text-muted)"}}>{w.current_step}/{w.total_steps}</span>
+                          <span style={{fontSize: 13, color: "var(--dash-text-muted)"}}>{w.current_step}/{w.total_steps}</span>
                         </div>
                       </td>
                       <td>
@@ -156,8 +156,8 @@ export default function Workflows() {
           <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16}}>
             {templates.map((t) => (
               <div key={t.id} className="card">
-                <h3 style={{fontSize: 15, marginBottom: 6}}>{t.name}</h3>
-                <p style={{fontSize: 13, color: "var(--dash-text-secondary)", marginBottom: 12}}>{t.description || "No description"}</p>
+                <h3 style={{fontSize: 16, marginBottom: 6}}>{t.name}</h3>
+                <p style={{fontSize: 14, color: "var(--dash-text-secondary)", marginBottom: 12}}>{t.description || "No description"}</p>
                 <div className="chip-list">
                   {t.is_builtin && <span className="chip">Built-in</span>}
                   {t.category && <span className="chip">{t.category}</span>}

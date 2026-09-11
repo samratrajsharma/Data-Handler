@@ -28,6 +28,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Runs before the stack because it needs neither Docker nor npm install:
+      # Node 22.6+ strips TypeScript types on the fly, so this executes the real
+      # maskCodec.ts rather than a compiled copy that could drift from it.
+      # Guards the one failure mode that does not throw — the browser's mask
+      # encoder and Python's decoder disagreeing, which silently stores masks
+      # that decode to the wrong pixels.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Assert the mask codec matches across TypeScript and Python
+        run: node --experimental-strip-types scripts/check_mask_codec_parity.mjs
+
+      - name: Test the mask painting primitives
+        run: node --experimental-strip-types scripts/check_mask_paint.mjs
+
+      # The help sheet is data; the bindings are a switch statement. Nothing at
+      # runtime makes them agree, and a sheet that promises a key the editor no
+      # longer implements teaches users to distrust the whole list.
+      - name: Assert every documented shortcut is implemented
+        run: node scripts/check_shortcuts.mjs
+
+      # The collapsed sidebar hid labels with opacity alone, so they still
+      # reserved width and pushed every icon out of the 72px rail. The CSS
+      # comment described the fix that was not there — which is why this is a
+      # check and not a code review note.
+      - name: Assert the collapsed sidebar still fits its icons
+        run: node scripts/check_sidebar_rail.mjs
+
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -92,6 +122,25 @@ jobs:
             echo "::error::/clusters is shadowed by /{asset_id} again - move it above that route"
             exit 1
           fi
+
+      # The analytics endpoint is the only new route with aggregate SQL
+      # (CASE bucketing, a grouped subquery, COUNT DISTINCT). None of that is
+      # exercised by a type check, and a malformed expression fails at query
+      # time, not import time — so it is called here against a real Postgres.
+      # 404 proves the route matched and the dataset was missing; 422 would
+      # mean "analytics" was parsed as a UUID by a shadowing route, and 500
+      # means the SQL itself is broken.
+      - name: Assert the analytics endpoint executes its SQL
+        run: |
+          code=$(curl -s -o /tmp/an.txt -w '%{http_code}' \
+            http://localhost:8000/api/v1/annotations/00000000-0000-0000-0000-000000000000/images/analytics)
+          echo "  /annotations/{id}/images/analytics -> $code"
+          cat /tmp/an.txt
+          case "$code" in
+            404) echo "  route reachable" ;;
+            422) echo "::error::analytics is shadowed by a path-param route"; exit 1 ;;
+            5*)  echo "::error::analytics returned $code - the aggregate SQL is broken"; exit 1 ;;
+          esac
 
       # The baseline migration is hand-written (no database was available to
       # autogenerate against), so it is verified rather than trusted: a clean

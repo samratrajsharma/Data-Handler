@@ -67,11 +67,11 @@ export default function WorkflowDetail() {
         </div>
         <div className="stat-card">
           <div className="stat-card__label">Started</div>
-          <div className="stat-card__value" style={{fontSize: 14}}>{workflow.started_at ? new Date(String(workflow.started_at)).toLocaleString() : "\u2014"}</div>
+          <div className="stat-card__value" style={{fontSize: 15}}>{workflow.started_at ? new Date(String(workflow.started_at)).toLocaleString() : "\u2014"}</div>
         </div>
         <div className="stat-card">
           <div className="stat-card__label">Completed</div>
-          <div className="stat-card__value" style={{fontSize: 14}}>{workflow.completed_at ? new Date(String(workflow.completed_at)).toLocaleString() : "\u2014"}</div>
+          <div className="stat-card__value" style={{fontSize: 15}}>{workflow.completed_at ? new Date(String(workflow.completed_at)).toLocaleString() : "\u2014"}</div>
         </div>
       </div>
 
@@ -84,12 +84,12 @@ export default function WorkflowDetail() {
               <div style={{width: 28, height: 28, borderRadius: "50%", display:"flex", alignItems:"center", justifyContent:"center",
                 background: step.status === "completed" ? "var(--dash-success)" : step.status === "running" ? "var(--dash-warning)" :
                   step.status === "failed" ? "var(--dash-danger)" : "var(--dash-surface-hover)",
-                color: step.status !== "pending" ? "#fff" : "var(--dash-text-secondary)", fontSize: 12, fontWeight: 700}}>
+                color: step.status !== "pending" ? "#fff" : "var(--dash-text-secondary)", fontSize: 13, fontWeight: 700}}>
                 {step.status === "completed" ? "\u2713" : i + 1}
               </div>
               <div style={{flex: 1}}>
-                <div style={{fontWeight: 600, fontSize: 14, color: "var(--dash-text)"}}>{step.name || step.step_type || step.type}</div>
-                <div style={{fontSize: 12, color: "var(--dash-text-muted)"}}>{step.step_type || step.type}</div>
+                <div style={{fontWeight: 600, fontSize: 15, color: "var(--dash-text)"}}>{step.name || step.step_type || step.type}</div>
+                <div style={{fontSize: 13, color: "var(--dash-text-muted)"}}>{step.step_type || step.type}</div>
               </div>
               <span className={`badge ${step.status === "completed" ? "badge--success" : step.status === "running" ? "badge--warning" :
                 step.status === "failed" ? "badge--danger" : "badge--neutral"}`}>{step.status}</span>
@@ -101,7 +101,7 @@ export default function WorkflowDetail() {
       {Boolean(workflow.result) && (
         <div className="card" style={{marginTop: 20}}>
           <div className="card-header"><h3>Result</h3></div>
-          <pre style={{fontSize: 12, color: "var(--dash-text-secondary)", overflow: "auto", maxHeight: 300, whiteSpace: "pre-wrap"}}>
+          <pre style={{fontSize: 13, color: "var(--dash-text-secondary)", overflow: "auto", maxHeight: 300, whiteSpace: "pre-wrap"}}>
             {JSON.stringify(workflow.result, null, 2)}
           </pre>
         </div>

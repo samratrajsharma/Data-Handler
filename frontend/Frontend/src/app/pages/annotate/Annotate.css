@@ -20,7 +20,7 @@
 }
 
 .ann-pick-card__name {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--dash-text);
   letter-spacing: -0.01em;
@@ -30,7 +30,7 @@
 }
 
 .ann-pick-card__count {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dash-text-muted);
   white-space: nowrap;
   flex: 0 0 auto;
@@ -58,7 +58,7 @@
 }
 
 .ann-pick-card__pct {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dash-text-secondary);
 }
 
@@ -81,11 +81,11 @@
 
 .ann-pick-chip__n {
   color: var(--dash-text-muted);
-  font-size: 11px;
+  font-size: 12.5px;
 }
 
 .ann-pick-card__nochips {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dash-text-muted);
   font-style: italic;
 }
@@ -94,7 +94,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--dash-text-muted);
   min-height: 26px;
 }
@@ -109,7 +109,7 @@
   align-items: center;
   gap: 10px;
   color: var(--dash-text-muted);
-  font-size: 13px;
+  font-size: 14px;
   padding: 40px 0;
   justify-content: center;
 }

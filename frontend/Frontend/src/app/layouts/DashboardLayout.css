@@ -8,10 +8,111 @@
   background: var(--dash-bg);
   color: var(--dash-text);
 }
-.dash--collapsed .dash__sidebar { width: 72px; }
-.dash--collapsed .dash__nav-item span,
-.dash--collapsed .dash__brand,
-.dash--collapsed .dash__theme span { display: none; }
+/* ━━━ Rail / pinned sidebar ━━━
+   Two modes: .dash--rail (icon rail that expands on hover) and .dash--pinned
+   (always open). One custom property, --rail, holds the collapsed width so the
+   sidebar and the main margin can never disagree about it.
+
+   THE OVERLAY IS THE POINT. On the rail, .dash__main keeps a 72px margin even
+   while the sidebar is expanded to 276px — the nav floats ABOVE the content
+   instead of pushing it. Pushing would reflow the entire page every time the
+   pointer crossed the left edge: text rewraps, the thing you were reading
+   jumps, and in the annotator the canvas would resize and re-fit on every
+   accidental pass. Overlaying costs a shadow and nothing else. */
+.dash { --rail: 72px; }
+
+.dash--rail .dash__sidebar { width: var(--rail); }
+.dash--rail .dash__sidebar:hover { width: var(--dash-sidebar-width); }
+.dash--rail .dash__main { margin-left: var(--rail); }
+
+/* Labels: present in the DOM at all times so they can animate. Width collapses
+   to zero alongside the opacity fade, otherwise the text would still occupy
+   space on the rail and force a horizontal scrollbar behind the icons.
+
+   Opacity leads the width slightly (0.16s vs 0.22s) so labels are already
+   readable as the panel finishes opening, and are gone before it finishes
+   closing — the alternative reads as text being guillotined by the edge. */
+.dash__label, .dash__brand {
+  max-width: 180px;
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity 0.16s ease 0.04s,
+              max-width 0.22s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* COLLAPSING THE WIDTH IS NOT COSMETIC — it is what makes the rail work.
+   .dash__nav-item is a nowrap flex row, so a label at opacity 0 still reserves
+   its full text width. Inside a 72px rail with overflow-x hidden and the row
+   centred, that pushed the ICON off the left edge: the rail rendered as empty
+   boxes with only the orange workflow border showing. Fading without
+   collapsing is the bug, not a variant of the fix. */
+.dash--rail .dash__sidebar:not(:hover) .dash__label,
+.dash--rail .dash__sidebar:not(:hover) .dash__brand {
+  max-width: 0;
+  opacity: 0;
+  transition: opacity 0.1s ease,
+              max-width 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+  pointer-events: none;
+}
+
+/* The row's 12px gap applies to a zero-width label too, so it survives the
+   collapse as 12px of phantom space next to the icon. Closed on the rail. */
+.dash--rail .dash__sidebar:not(:hover) .dash__nav-item,
+.dash--rail .dash__sidebar:not(:hover) .dash__theme,
+.dash--rail .dash__sidebar:not(:hover) .dash__logo { gap: 0; }
+
+/* The step badge has margin-left:auto and a min-width, so it pushes from the
+   right exactly as the label pushes from the left. Every dimension that
+   reserves space has to go, not just the paint. */
+.dash--rail .dash__sidebar:not(:hover) .dash__step {
+  max-width: 0;
+  min-width: 0;
+  margin-left: 0;
+  border-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: opacity 0.1s ease;
+  pointer-events: none;
+}
+
+/* A block element: opacity alone would leave its line box and padding holding
+   vertical space at the bottom of the rail. */
+.dash--rail .dash__sidebar:not(:hover) .dash__version {
+  height: 0;
+  padding: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* The rail's own affordance: a soft shadow only while floating over content,
+   so the expanded panel reads as a layer above the page rather than a column
+   that pushed it. */
+.dash--rail .dash__sidebar:hover {
+  box-shadow: 6px 0 28px rgba(0, 0, 0, 0.28);
+}
+:root[data-theme="light"] .dash--rail .dash__sidebar:hover {
+  box-shadow: 6px 0 28px rgba(0, 0, 0, 0.12);
+}
+
+/* Centre the icons on the rail and let them slide back to the left edge as it
+   opens — cheaper to read than icons that jump position at the end of the
+   animation. */
+.dash--rail .dash__sidebar:not(:hover) .dash__nav-item,
+.dash--rail .dash__sidebar:not(:hover) .dash__theme,
+.dash--rail .dash__sidebar:not(:hover) .dash__logo { justify-content: center; }
+.dash--rail .dash__sidebar:not(:hover) .dash__modes { flex-direction: column; }
+.dash--rail .dash__sidebar:not(:hover) .dash__sidebar-header { justify-content: center; }
+.dash--rail .dash__sidebar:not(:hover) .dash__toggle { display: none; }
+
+/* Respect a reduced-motion preference: the sidebar still expands, it just does
+   not animate. An expanding panel is the one thing on screen that moves
+   constantly, so this matters more here than anywhere else in the app. */
+@media (prefers-reduced-motion: reduce) {
+  .dash__sidebar, .dash__main, .dash__label, .dash__brand, .dash__step {
+    transition: none !important;
+  }
+}
 
 /* ━━━ Sidebar ━━━ */
 .dash__sidebar {
@@ -20,7 +121,9 @@
   border-right: 1px solid var(--dash-border);
   display: flex;
   flex-direction: column;
-  transition: width 0.2s ease;
+  transition: width 0.22s cubic-bezier(0.22, 0.61, 0.36, 1),
+              box-shadow 0.22s ease;
+  will-change: width;
   position: fixed;
   top: 0; left: 0; bottom: 0;
   z-index: 100;
@@ -37,7 +140,7 @@
 }
 .dash__logo { display: flex; align-items: center; gap: 10px; color: var(--dash-text); }
 .dash__brand {
-  font-weight: 700; font-size: 17px;
+  font-weight: 700; font-size: 18px;
   color: var(--dash-text);
   letter-spacing: -0.02em;
 }
@@ -58,7 +161,7 @@
   gap: 12px;
   padding: 10px 12px;
   border-radius: 10px;
-  font-size: 13.5px;
+  font-size: 14.5px;
   font-weight: 500;
   color: var(--dash-text-secondary);
   transition: all 0.15s ease;
@@ -91,7 +194,7 @@
 .dash__nav--mode { flex: 1; min-height: 0; overflow-y: auto; padding-top: 4px; }
 .dash__nav--shared { flex: 0 0 auto; border-top: 1px solid var(--dash-border); padding-top: 8px; }
 .dash__nav-label {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--dash-text-muted); padding: 2px 12px 4px;
 }
 
@@ -108,20 +211,17 @@
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 8px 2px;
   border-radius: 9px;
-  font-size: 11px; font-weight: 600;
+  font-size: 12.5px; font-weight: 600;
   color: var(--dash-text-secondary);
   background: none;
   transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 .dash__mode:hover { color: var(--dash-text); }
 .dash__mode--active {
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--dash-surface);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
 }
-.dash--collapsed .dash__modes { flex-direction: column; margin: 6px 8px; }
-.dash--collapsed .dash__mode { padding: 9px 0; }
-.dash--collapsed .dash__mode span { display: none; }
 
 /* ━━━ Sidebar Footer / Theme Toggle ━━━ */
 .dash__sidebar-footer {
@@ -137,7 +237,7 @@
   gap: 12px;
   padding: 10px 12px;
   border-radius: 10px;
-  font-size: 13.5px;
+  font-size: 14.5px;
   font-weight: 500;
   color: var(--dash-text-secondary);
   background: none;
@@ -145,19 +245,41 @@
   white-space: nowrap;
 }
 .dash__theme:hover { color: var(--dash-text); background: var(--dash-surface-hover); }
-.dash--collapsed .dash__theme { justify-content: center; }
+
+/* Step number on a workflow nav item.
+   Right-aligned and muted so it reads as an index, not part of the label —
+   the point is to show these are ordered, not to shout a number. The active
+   item's badge brightens with the rest of the row. */
+.dash__step {
+  margin-left: auto;
+  min-width: 17px;
+  height: 17px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--dash-text-muted);
+  background: var(--dash-bg);
+  border: 1px solid var(--dash-border);
+  border-radius: 50%;
+}
+.dash__nav-item--active .dash__step {
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
 
 /* Build identity. Quiet by design — present for bug reports, not competing
    with navigation. Hidden entirely when the sidebar is collapsed. */
 .dash__version {
   padding: 6px 12px 0;
-  font-size: 11px;
+  font-size: 12.5px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
   color: var(--dash-text-muted);
   user-select: text;
 }
-.dash--collapsed .dash__version { display: none; }
 
 /* ━━━ Main Content ━━━ */
 .dash__main {
@@ -170,10 +292,47 @@
   margin-left: var(--dash-sidebar-width);
   padding: 32px 36px;
   min-height: 100vh;
-  transition: margin-left 0.2s ease;
+  transition: margin-left 0.22s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
-.dash--collapsed .dash__main { margin-left: 72px; }
 
 @media (max-width: 768px) {
   .dash__main { margin-left: 72px; padding: 20px 16px; }
+}
+
+/* ━━━ Pin button state ━━━ */
+.dash__toggle--on { color: var(--accent-text); background: var(--accent-dim); }
+.dash__toggle--on:hover { color: var(--accent-text); background: var(--accent-dim); }
+
+/* ━━━ Workflow steps get an orange edge ━━━
+   The sidebar mixes two kinds of destination: places you go (Dashboard,
+   Datasets, Settings, Tasks) and steps you work THROUGH, in order. They looked
+   identical, so the pipeline read as more menu items.
+
+   A left edge in the accent marks the numbered steps as one ordered group. It
+   is a 2px rule rather than a full border because a boxed item competes with
+   the active-item fill, and every step being boxed would make the sidebar
+   noisier than the thing it is clarifying. Dimmed at rest, full strength on
+   the current step — so the group is legible at a glance and your position in
+   it is legible without one. */
+.dash__nav--mode .dash__nav-item {
+  border-left: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 0 10px 10px 0;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.dash__nav--mode .dash__nav-item:hover {
+  border-left-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.dash__nav--mode .dash__nav-item--active {
+  border-left-color: var(--accent);
+}
+/* The generic active marker is an absolutely-positioned 3px bar at left:0,
+   which would sit directly on top of this border. Suppressed here — the border
+   already does that job, and two orange bars 2px apart reads as a rendering
+   bug. */
+.dash__nav--mode .dash__nav-item--active::before { display: none; }
+
+/* On the rail the labels are gone, so the edge is the only thing distinguishing
+   a workflow step from a destination. Keep it. */
+.dash--rail .dash__sidebar:not(:hover) .dash__nav--mode .dash__nav-item {
+  border-radius: 0 8px 8px 0;
 }

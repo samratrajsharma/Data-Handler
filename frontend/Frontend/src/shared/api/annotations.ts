@@ -11,7 +11,16 @@ export interface AnnotationClass {
   order_index: number;
 }
 
-export type AnnotationKind = "bbox" | "polygon" | "classification";
+export type AnnotationKind = "bbox" | "polygon" | "classification" | "mask";
+
+/** COCO compressed run-length encoding for a segmentation mask.
+ *  `size` is [height, width] in ABSOLUTE pixels — unlike the normalized 0..1
+ *  geometry on the other annotation kinds, a mask is tied to the exact pixel
+ *  grid it was painted on. See app/pages/annotate/maskCodec.ts. */
+export interface RleMask {
+  size: [number, number];
+  counts: string;
+}
 export type ImageStatus = "unannotated" | "annotated" | "approved" | "rejected";
 export type Split = "train" | "valid" | "test";
 
@@ -25,6 +34,8 @@ export interface ImageAnnotationOut {
   w: number | null;
   h: number | null;
   points: [number, number][] | null;
+  /** Present only for kind === "mask". */
+  mask?: RleMask | null;
 }
 
 export interface ImageAnnotationIn {
@@ -35,6 +46,7 @@ export interface ImageAnnotationIn {
   w?: number | null;
   h?: number | null;
   points?: [number, number][] | null;
+  mask?: RleMask | null;
 }
 
 export interface AnnotateQueueItem {
@@ -77,9 +89,64 @@ export interface ImageAnnotationsResponse {
   split: Split | null;
   prev_asset_id: string | null;
   next_asset_id: string | null;
+  /** Workflow tags on this image (lower-cased, de-duplicated by the API). */
+  tags?: string[];
 }
 
-export type ImageExportFormat = "yolo" | "coco" | "voc" | "classification";
+export interface TagCount {
+  tag: string;
+  count: number;
+}
+
+export interface AnalyticsClassRow {
+  class_id: string;
+  name: string;
+  color: string;
+  count: number;
+  image_count: number;
+}
+
+export interface AnalyticsBucket {
+  label: string;
+  count: number;
+}
+
+export interface AnalyticsFinding {
+  level: "warn" | "info";
+  message: string;
+}
+
+export interface AnnotateAnalytics {
+  total_images: number;
+  labelled_images: number;
+  empty_images: number;
+  total_annotations: number;
+  avg_per_labelled_image: number;
+  classes: AnalyticsClassRow[];
+  kinds: AnalyticsBucket[];
+  per_image: AnalyticsBucket[];
+  sizes: AnalyticsBucket[];
+  unsized_annotations: number;
+  split_status: AnalyticsBucket[];
+  findings: AnalyticsFinding[];
+}
+
+export type ImageExportFormat =
+  | "yolo"
+  | "coco"
+  | "voc"
+  | "classification"
+  | "createml"
+  | "tfcsv"
+  | "segmentation";
+
+/** Formats whose label files address images by a path inside the zip. The
+ *  server forces include_images on for these, so the UI must not offer a
+ *  checkbox that appears to turn it off. Kept next to the type so adding a
+ *  format makes the omission obvious. */
+export const IMAGE_CENTRIC_FORMATS: ReadonlySet<ImageExportFormat> = new Set([
+  "yolo", "voc", "classification", "createml", "tfcsv", "segmentation",
+]);
 
 export interface ExportTaskResponse {
   task_id: string;
@@ -114,6 +181,9 @@ export const annotationApi = {
     api.delete(`/annotations/${datasetId}/classes/${classId}`),
 
   // Image annotation
+  getAnalytics: (datasetId: string) =>
+    api.get<AnnotateAnalytics>(`/annotations/${datasetId}/images/analytics`),
+
   getSummary: (datasetId: string) =>
     api.get<AnnotateSummary>(`/annotations/${datasetId}/images/summary`),
   getQueue: (
@@ -138,6 +208,34 @@ export const annotationApi = {
       `/annotations/${datasetId}/images/${assetId}/annotations`,
       data
     ),
+  /** Apply one status to every image in the dataset, optionally restricted to
+   *  images currently in `only_status`. Only images that already have a state
+   *  row are touched — an image never opened has no annotations, and sweeping
+   *  it into "approved" would mark an empty image as reviewed. */
+  /** Every tag used in the dataset, with how many images carry it. Drives the
+   *  autocomplete — offering existing tags is what stops the vocabulary
+   *  fragmenting into "blurry", "blurred" and "blur". */
+  listTags: (datasetId: string) =>
+    api.get<{ tags: TagCount[] }>(`/annotations/${datasetId}/tags`),
+
+  /** Replace this image's tags. Idempotent: the editor holds the whole list,
+   *  so one write avoids the ordering problems separate add/remove calls
+   *  would create. */
+  setImageTags: (datasetId: string, assetId: string, tags: string[]) =>
+    api.put<{ tags: string[] }>(
+      `/annotations/${datasetId}/images/${assetId}/tags`,
+      { tags }
+    ),
+
+  bulkSetState: (
+    datasetId: string,
+    data: { status: ImageStatus; only_status?: ImageStatus }
+  ) =>
+    api.post<{ updated: number; status: ImageStatus }>(
+      `/annotations/${datasetId}/images/bulk-state`,
+      data
+    ),
+
   setImageState: (
     datasetId: string,
     assetId: string,

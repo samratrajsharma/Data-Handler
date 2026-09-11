@@ -58,7 +58,7 @@ class ImageAnnotation(Base):
         ForeignKey("annotation_classes.id", ondelete="CASCADE"),
         nullable=False, index=True,
     )
-    # 'bbox' | 'polygon' | 'classification'
+    # 'bbox' | 'polygon' | 'classification' | 'mask'
     kind = Column(String(20), nullable=False)
     # Normalized geometry (0..1). bbox: x/y = top-left corner. Null for
     # classification; polygon uses ``points`` = [[x, y], ...].
@@ -67,6 +67,15 @@ class ImageAnnotation(Base):
     w = Column(Float, nullable=True)
     h = Column(Float, nullable=True)
     points = Column(JSONB, nullable=True)
+    # Segmentation mask, for kind == 'mask' only. COCO compressed RLE:
+    # ``{"size": [height, width], "counts": "<ascii>"}``.
+    #
+    # Unlike the columns above this is stored in ABSOLUTE PIXELS, because RLE is
+    # defined over a pixel grid and `size` pins it to the image it was painted
+    # on. Everything else here is normalized 0..1 and survives a resize; a mask
+    # does not, which is why validate_rle() refuses one whose size disagrees
+    # with the asset's width/height.
+    mask = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), nullable=True,
@@ -97,6 +106,41 @@ class ImageAnnotationState(Base):
         DateTime(timezone=True), nullable=True,
         server_default=func.now(), onupdate=func.now(),
     )
+
+
+class ImageTag(Base):
+    """A free-form workflow tag on one image.
+
+    Distinct from ``AnnotationClass``: a class says what is IN the image and
+    becomes a training label; a tag is metadata ABOUT the image — "blurry",
+    "night", "recheck", "batch-3" — used for filtering and triage, and never
+    exported to training formats.
+
+    One row per (asset, tag) rather than an array column, so "every image
+    tagged X" is an index lookup and the uniqueness is enforced by the
+    database. Tags arrive already lower-cased and trimmed from the API.
+    """
+
+    __tablename__ = "image_tags"
+    __table_args__ = (
+        UniqueConstraint("asset_id", "tag", name="uq_image_tag"),
+        Index("ix_image_tags_dataset_tag", "dataset_id", "tag"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Denormalised from the asset so dataset-wide tag queries avoid a join.
+    dataset_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("datasets.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    asset_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("image_assets.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    tag = Column(String(64), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
 class TextDocument(Base):
