@@ -3,8 +3,32 @@ Application settings loaded from environment variables.
 Uses pydantic-settings for validation and .env file support.
 """
 
+from pathlib import Path
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal
+
+# Repo root: core/settings.py -> core/ -> <root>. The VERSION file next to it
+# is the single place the product's version number is written down; the git
+# tag, the image tag and this file are expected to agree, and the release
+# checklist in the README says to bump it in the same commit that is tagged.
+_VERSION_FILE = Path(__file__).resolve().parent.parent / "VERSION"
+
+
+def _repo_version() -> str:
+    """Read VERSION, or fall back to a clearly-not-a-release marker.
+
+    Deliberately forgiving: a missing or unreadable VERSION file must degrade
+    to a placeholder, never stop the app booting. Version reporting is
+    diagnostic — it is not worth a crash loop, and this runs at import time
+    before any logging is configured.
+    """
+    try:
+        version = _VERSION_FILE.read_text(encoding="utf-8").strip()
+        return version or "0.0.0-dev"
+    except OSError:
+        return "0.0.0-dev"
 
 
 class Settings(BaseSettings):
@@ -77,13 +101,34 @@ class Settings(BaseSettings):
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
 
     # ── Build identity ────────────────────────────────────────────────────
-    # Set at image build time from the git tag (Dockerfile ARG APP_VERSION,
-    # supplied by CI as the ref name). Surfaced in /health and the OpenAPI
-    # title so a bug report identifies the exact build it came from — the
-    # version used to be hardcoded "0.1.0" in app.py and never changed,
-    # which made "which version are you on?" unanswerable.
-    # Local builds leave the default.
-    APP_VERSION: str = "0.0.0-dev"
+    # Resolution order, highest first:
+    #
+    #   1. APP_VERSION in the environment — set by the Dockerfile from the
+    #      build arg CI fills with the git tag. A published image therefore
+    #      reports the exact tag it was built from.
+    #   2. The repo's VERSION file (see _repo_version at the top of this file).
+    #   3. "0.0.0-dev", which now only happens if VERSION is missing.
+    #
+    # Step 2 is the one that was absent. Without it, anything not built by CI
+    # — a local `run.ps1 -Build`, a contributor's checkout — reported
+    # "0.0.0-dev" in the sidebar while the source tree was a released
+    # version. The number a user reads and the number they downloaded
+    # disagreed, which makes "which version are you on?" unanswerable in
+    # exactly the case where you need the answer.
+    APP_VERSION: str = _repo_version()
+
+    @field_validator("APP_VERSION")
+    @classmethod
+    def _version_or_repo_file(cls, value: str) -> str:
+        """Treat an empty APP_VERSION as absent rather than as a value.
+
+        The Dockerfile sets ENV APP_VERSION unconditionally, so the variable
+        exists even when no --build-arg was given. Without this, that empty
+        string would satisfy the field and the app would report a blank
+        version instead of falling through to VERSION.
+        """
+        cleaned = (value or "").strip()
+        return cleaned or _repo_version()
 
 
 settings = Settings()

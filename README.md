@@ -244,9 +244,36 @@ If Data Handler is useful to you, a star on the repo helps others find it.
 Publishing a version tag builds and pushes the prebuilt images so users install by download instead of build:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+# 1. Bump the version in the SAME commit you are about to tag. Three files,
+#    and they must agree — the app reads VERSION to report its own build:
+#      VERSION                                  -> 0.1.6   (no leading "v")
+#      frontend/Frontend/package.json           -> 0.1.6
+#      frontend/Frontend/package-lock.json      -> 0.1.6   (both fields)
+#    npm ci refuses to run if the last two disagree, so a half-done bump
+#    fails the frontend image build rather than shipping quietly.
+
+# 2. The commit must be ON THE REMOTE FIRST. A tag names a commit; tagging
+#    before pushing publishes whatever origin/main already pointed at, and the
+#    build silently ships the previous release's code under a new version.
+git push origin main
+git log --oneline -1 origin/main     # confirm this is the commit you mean
+
+# 3. Then tag that commit and push the tag.
+git tag v0.1.6
+git push origin v0.1.6
 ```
+
+The tag carries the `v`; `VERSION` does not. CI passes the tag to the image as
+`APP_VERSION`, which takes precedence over `VERSION` at runtime, so
+`/api/v1/version` returns `v0.1.6` from a released image and `0.1.6` from a
+local `-Build` of the same source. The sidebar strips any leading `v` before
+rendering, so both display as **v0.1.6** — the difference is only visible in
+the raw endpoint.
+
+Check `git tag --list` first — reusing a version that already exists is refused
+by the remote, and a tag pointing at the wrong commit has to be deleted on both
+sides (`git tag -d`, `git push origin :refs/tags/vX.Y.Z`) before it can be
+moved.
 
 This triggers the **Build & publish images** workflow, which pushes `data-handler-api` (~406 MB download) and `data-handler-frontend` (~94 MB) to GHCR, each tagged `latest`, the version tag, and a short SHA.
 

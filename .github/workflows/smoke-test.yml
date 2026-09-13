@@ -107,6 +107,31 @@ jobs:
           curl -fsS http://localhost:8000/api/v1/tasks    > /dev/null && echo "  /api/v1/tasks OK"
           curl -fsS http://localhost:8000/api/v1/version  > /dev/null && echo "  /api/v1/version OK"
 
+      # The stack here is built WITHOUT --build-arg APP_VERSION, which is
+      # exactly how a user's `run.ps1 -Build` builds it. So this asserts the
+      # fallback chain works end to end: empty env -> VERSION file in the image
+      # -> reported version. A "0.0.0-dev" here means VERSION did not reach the
+      # image (a .dockerignore entry, a COPY that misses it) and every local
+      # build would misreport its own version while looking fine.
+      - name: Assert the build reports a real version, not the dev fallback
+        run: |
+          set -e
+          ver=$(curl -fsS http://localhost:8000/api/v1/version \
+                | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+          echo "  reported version: '${ver}'"
+          case "$ver" in
+            ""|"0.0.0-dev")
+              echo "::error::version is '${ver}' - the VERSION file did not reach the image"
+              exit 1 ;;
+          esac
+          # And it must agree with the file in this checkout.
+          want=$(tr -d '[:space:]' < VERSION)
+          if [ "$ver" != "$want" ]; then
+            echo "::error::app reports '${ver}' but VERSION says '${want}'"
+            exit 1
+          fi
+          echo "  matches VERSION ($want)"
+
       # Starlette matches routes in registration order, so a literal segment
       # declared after a path parameter is unreachable. /{dataset_id}/clusters
       # sat below /{dataset_id}/{asset_id} and returned 422 for its entire

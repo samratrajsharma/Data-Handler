@@ -163,11 +163,18 @@ ENV HF_HOME=/opt/hf-cache \
 
 WORKDIR /app
 
-# Build identity. CI passes the git tag (build-args: APP_VERSION=${{ github.ref_name }});
-# a local `docker build` with no --build-arg keeps the dev default. Declared
-# here, AFTER the expensive dependency layers, so a version bump invalidates
-# only the cheap tail of the build.
-ARG APP_VERSION=0.0.0-dev
+# Build identity. CI passes the git tag (build-args: APP_VERSION=${{ github.ref_name }}).
+#
+# The default is EMPTY, not "0.0.0-dev". ENV is unconditional — it is set
+# whether or not --build-arg was passed — so a non-empty default would always
+# win over the VERSION file in the source tree, and a local `run.ps1 -Build`
+# of a released checkout would report "0.0.0-dev" in the UI. Empty lets
+# core/settings.py fall through to VERSION, which is the number the user
+# actually downloaded.
+#
+# Declared here, AFTER the expensive dependency layers, so a version bump
+# invalidates only the cheap tail of the build.
+ARG APP_VERSION=""
 ENV APP_VERSION=${APP_VERSION}
 
 # Application source last: it changes on every commit, so keeping it after the

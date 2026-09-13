@@ -105,6 +105,33 @@
 .dash--rail .dash__sidebar:not(:hover) .dash__sidebar-header { justify-content: center; }
 .dash--rail .dash__sidebar:not(:hover) .dash__toggle { display: none; }
 
+/* Brand monogram — the header's only permanent occupant.
+   With the wordmark collapsed to zero width and the pin button hidden, the
+   rail's header was an empty bar: ~60px of nothing above the first icon, which
+   read as a rendering fault rather than as spacing. The mark fills it, keeps
+   the header the same height in both states so nothing below shifts when the
+   panel opens, and gives the rail a home link it did not have. */
+.dash__mark {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--dash-on-primary);
+  background: var(--accent-strong);
+  border-radius: 9px;
+  user-select: none;
+}
+/* NOTE: the header padding is deliberately NOT overridden on the rail. It was,
+   briefly — and that made the header 12px shorter collapsed than expanded, so
+   every icon below it slid down as the panel opened. The mark is what fixes
+   the empty header; changing its height as well just trades one oddity for a
+   moving one. Same padding in both states, so only the width animates. */
+
 /* Respect a reduced-motion preference: the sidebar still expands, it just does
    not animate. An expanding panel is the one thing on screen that moves
    constantly, so this matters more here than anywhere else in the app. */
@@ -132,7 +159,11 @@
 }
 
 .dash__sidebar-header {
-  padding: 20px 16px 16px;
+  /* Symmetric, and the same in both sidebar states — the 30px monogram sets
+     the height, so this is 58px whether the panel is a rail or open. The old
+     20/16 asymmetry existed to balance a text-only wordmark that no longer
+     sits alone. */
+  padding: 14px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;

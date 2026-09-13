@@ -225,6 +225,12 @@ export default function DashboardLayout() {
       <aside className="dash__sidebar">
         <div className="dash__sidebar-header">
           <Link to="/" className="dash__logo" title="Home">
+            {/* The monogram is the only thing in this header that survives the
+                collapse — the wordmark shrinks to zero width and the pin button
+                hides, which previously left the top of the rail as an empty
+                60px bar above the first icon. It also restores a home target on
+                the rail, which otherwise had none. */}
+            <span className="dash__mark" aria-hidden="true">DH</span>
             <span className="dash__brand">Data Handler</span>
           </Link>
           {/* Pin, not collapse: unpinned already collapses itself on mouse-out,
