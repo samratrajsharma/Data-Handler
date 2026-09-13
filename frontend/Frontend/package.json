@@ -2,7 +2,7 @@
   "name": "datahandler-frontend",
   "private": true,
   "// version": "Kept in step with the repo-root VERSION file and the release tag. If you change this, change package-lock.json's two matching fields in the same edit — npm ci refuses to run when they disagree, which fails the frontend image build.",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -613,30 +613,48 @@
 /* Tool rail */
 
 .ann-toolbar {
-  flex: 0 0 46px;
+  flex: 0 0 58px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   padding: 8px 0;
   /* Rail is on the RIGHT now (flex order above), so its divider faces left. */
   border-left: 1px solid var(--dash-border);
   background: var(--dash-surface);
 }
 
+/* Icon over shortcut letter. The letter is why the rail widened from 46px:
+   an icon-only rail is legible to whoever drew the icons and a guessing game
+   for everyone else, and the shortcut is the single most useful thing to know
+   about a tool. Stacking rather than hiding it in a tooltip means it is
+   readable while the hand is still on the mouse. */
 .ann-tool {
-  width: 34px;
-  height: 34px;
+  width: 46px;
+  min-height: 44px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 10px;
   background: transparent;
   color: var(--dash-text-secondary);
   cursor: pointer;
-  padding: 0;
+  padding: 4px 0 3px;
 }
+
+.ann-tool__key {
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--dash-text-muted);
+}
+/* On the active tool the letter rides the accent with the icon; leaving it
+   muted made the selected button look half-lit. */
+.ann-tool--active .ann-tool__key { color: inherit; opacity: 0.85; }
 .ann-tool:hover { background: var(--dash-surface-hover); color: var(--dash-text); }
 .ann-tool--active {
   background: var(--accent-dim);
@@ -791,6 +809,72 @@
   50% { transform: translateX(-6px); }
 }
 
+/* ━━━ Coach strip ━━━
+   One line of advice at the bottom of the canvas, never a dialog.
+
+   pointer-events:none is the whole design. This appears exactly while the user
+   is supposed to be dragging on the canvas, so a strip that swallowed the
+   pointer would prevent the action it is asking for — and the failure would
+   look like "drawing does not work near the bottom of the image", which nobody
+   would connect back to a hint. Only the dismiss button opts back in. */
+.ann-coach {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 16px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 3;
+  animation: ann-coach-in 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.ann-coach__box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(560px, calc(100% - 32px));
+  padding: 9px 10px 9px 15px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--dash-text);
+  background: var(--dash-surface);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.28);
+}
+:root[data-theme="light"] .ann-coach__box {
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.12);
+}
+
+.ann-coach__text { min-width: 0; }
+
+.ann-coach__x {
+  pointer-events: auto;   /* the one interactive part of the strip */
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--dash-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.ann-coach__x:hover { color: var(--dash-text); background: var(--dash-surface-hover); }
+
+@keyframes ann-coach-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ann-coach { animation: none; }
+}
+
 .ann-canvas__loading {
   position: absolute;
   inset: 0;
@@ -834,8 +918,30 @@
 }
 
 .ann-side__section {
-  padding: 12px;
+  padding: 14px 13px;
   border-bottom: 1px solid var(--dash-border);
+}
+
+/* The panel is a flex column and every section used to be content-sized, so
+   they all bunched against the top and left a dead block of surface under
+   Progress — on a tall screen, a third of the panel showing nothing.
+   Annotations is the section that grows as you work, so it takes the slack.
+
+   min-height:0 is required: a flex item's default min-height is auto, which
+   refuses to shrink below its content and would push Tags and Progress off the
+   bottom the moment the list got long — the opposite of the problem being
+   fixed. The list scrolls inside itself instead. */
+.ann-side__section--grow {
+  flex: 1 1 auto;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+}
+.ann-side__section--grow .ann-anns {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .ann-side__title {

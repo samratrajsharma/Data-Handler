@@ -167,6 +167,32 @@
   --dash-warning: var(--ink-1);
 }
 
+/* ━━━ Theme switch: circular reveal ━━━
+   DashboardLayout's toggleTheme wraps the change in document.startViewTransition
+   and animates a clip-path circle out of the theme button.
+
+   These three rules are what make that visible. The browser's DEFAULT view
+   transition is a cross-fade between the two snapshots — and a cross-fade
+   running underneath the clip means the old theme is already half-faded before
+   the circle reaches it, so the wipe looks like a smudge instead of an edge.
+   Killing the default animation leaves the old snapshot sitting still while the
+   new one is revealed through the growing circle, which is the effect.
+
+   The stacking order matters just as much: the new snapshot must be ON TOP, or
+   the circle would be cutting a hole in a layer that is already behind the old
+   page and nothing would appear to happen.
+
+   Everything here is inert in browsers without view transitions (Firefox at the
+   time of writing) — unknown pseudo-elements are dropped, and the JS falls back
+   to an instant switch. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) { z-index: 1; }
+::view-transition-new(root) { z-index: 2; }
+
 html { scroll-behavior: smooth; }
 body {
   font-family: var(--font-primary);

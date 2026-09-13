@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import api from "../../shared/api/client";
 import "./DashboardLayout.css";
@@ -149,6 +149,11 @@ export default function DashboardLayout() {
    */
   const [pinned, setPinned] = useState(readPinned);
 
+  // The theme wipe expands from this button, so its position is needed at
+  // click time. A ref rather than the click event: the origin then survives
+  // the toggle being triggered from anywhere else later.
+  const themeBtnRef = useRef<HTMLButtonElement | null>(null);
+
   const togglePin = () => {
     setPinned((p) => {
       const next = !p;
@@ -193,11 +198,84 @@ export default function DashboardLayout() {
     }
   };
 
+  /**
+   * Theme switch, revealed as a circle expanding out of the button.
+   *
+   * HOW IT WORKS
+   * document.startViewTransition() snapshots the page before and after the DOM
+   * change and stacks them as ::view-transition-old(root) and -new(root). We
+   * suppress the default cross-fade in CSS and instead animate a clip-path
+   * circle on the NEW snapshot, centred on the button, growing to the radius
+   * of the farthest viewport corner — so the new theme is wiped over the old
+   * one from the point the user clicked. Nothing in the app re-renders for the
+   * animation; it is two bitmaps and a clip.
+   *
+   * WHY NOT A CSS-ONLY OVERLAY
+   * The obvious alternative — an expanding coloured div over the page — can
+   * only ever be one flat colour. It hides the transition rather than showing
+   * it: the sidebar, cards and text all change underneath the disc and you
+   * see the result pop when it is removed. A view transition reveals the
+   * actual new page through the circle, which is the effect asked for.
+   *
+   * GRACEFUL EVERYWHERE
+   * Firefox has no startViewTransition, and anyone on reduced-motion should
+   * not get a 500ms wipe. Both fall through to the plain instant switch, which
+   * is exactly what the app did before.
+   */
   const toggleTheme = () => {
     const next: Theme = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-    try { localStorage.setItem("dh-theme", next); } catch { /* ignore */ }
+    const apply = () => {
+      setTheme(next);
+      document.documentElement.setAttribute("data-theme", next);
+      try { localStorage.setItem("dh-theme", next); } catch { /* ignore */ }
+    };
+
+    const doc = document as Document & {
+      startViewTransition?: (cb: () => void) => { ready: Promise<void> };
+    };
+    const reduced =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (typeof doc.startViewTransition !== "function" || reduced) {
+      apply();
+      return;
+    }
+
+    // Origin: the centre of the button that was clicked. Falls back to the
+    // viewport centre if the ref is somehow not attached — a wrong origin is
+    // survivable, a thrown error during a theme switch is not.
+    const rect = themeBtnRef.current?.getBoundingClientRect();
+    const x = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+    const y = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
+    // Distance to the farthest corner. Using half the viewport instead leaves
+    // the far corners un-revealed at the end of the animation.
+    const radius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
+
+    const transition = doc.startViewTransition(apply);
+    void transition.ready
+      .then(() => {
+        document.documentElement.animate(
+          {
+            clipPath: [
+              `circle(0px at ${x}px ${y}px)`,
+              `circle(${radius}px at ${x}px ${y}px)`,
+            ],
+          },
+          {
+            duration: 520,
+            easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+            pseudoElement: "::view-transition-new(root)",
+          }
+        );
+      })
+      // If the transition is skipped (another one starts, or the tab hides),
+      // `ready` rejects. The DOM change has still been applied by then, so
+      // there is nothing to repair — only an unhandled rejection to avoid.
+      .catch(() => {});
   };
 
   const activeMode = MODES.find((m) => m.id === mode) ?? MODES[0];
@@ -280,7 +358,7 @@ export default function DashboardLayout() {
           <div className="dash__footer-links">
             {FOOTER_ITEMS.map(renderItem)}
           </div>
-          <button className="dash__theme" onClick={toggleTheme}
+          <button className="dash__theme" ref={themeBtnRef} onClick={toggleTheme}
             title={theme === "dark" ? "Switch to light" : "Switch to dark"}>
             {theme === "dark" ? (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"

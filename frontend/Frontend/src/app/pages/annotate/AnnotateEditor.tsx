@@ -142,7 +142,11 @@ const FILTERS: { id: QueueFilter; label: string; hint: string }[] = [
 // ── Inline SVG icons ─────────────────────────────────────────────────────
 
 const ic = (children: ReactNode) => (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  // 20px, not 17. At 17 in a 34px button these read as smudges rather than
+  // symbols — and three of the tools were not even SVG (see ICONS.crop/brush/
+  // eraser below), so the rail mixed stroke icons with coloured emoji at
+  // different optical weights.
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     {children}
   </svg>
@@ -172,6 +176,40 @@ const ICONS = {
     </>
   ),
   fit: ic(<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />),
+  // These four were "⤧", "🖌", "🩹" and "◉"/"◎" — unicode and emoji rendered
+  // inline. Emoji ignore `currentColor`, so the eraser stayed a blue bandage
+  // whether the tool was active, inactive or hovered, and none of them matched
+  // the stroke weight of the real icons beside them. Drawn properly here.
+  crop: ic(
+    <>
+      <path d="M6 2v14a2 2 0 002 2h14" />
+      <path d="M18 22V8a2 2 0 00-2-2H2" />
+    </>
+  ),
+  brush: ic(
+    <>
+      <path d="M19.5 3.5a2.12 2.12 0 013 3L12 17l-4 1 1-4z" />
+      <path d="M6.5 14.5C5 16 5 19 3 21c3 0 5.5-1 7-2.5" />
+    </>
+  ),
+  eraser: ic(
+    <>
+      <path d="M18.4 10.6L13.4 5.6a2 2 0 00-2.8 0l-7 7a2 2 0 000 2.8l3 3H12l6.4-6.4a2 2 0 000-2.8z" />
+      <path d="M8 20h13" />
+    </>
+  ),
+  eyeOn: ic(
+    <>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  eyeOff: ic(
+    <>
+      <path d="M9.9 5.2A9.7 9.7 0 0112 5c6.5 0 10 7 10 7a17 17 0 01-3.2 4.1M6.2 6.2A17 17 0 002 12s3.5 7 10 7a9.6 9.6 0 004.1-.9" />
+      <path d="M3 3l18 18" />
+    </>
+  ),
   pencil: (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -434,6 +472,44 @@ export default function AnnotateEditor() {
   }, [dsId]);
   const openShortcuts = useCallback(() => setShowHelp(true), []);
   const closeShortcuts = useCallback(() => setShowHelp(false), []);
+
+  /**
+   * The next thing worth telling the user, or null.
+   *
+   * ONE AT A TIME, AND ONLY THE STEPS THAT BLOCK PROGRESS. There were three
+   * more hints I did not add — brush, tags, splits — because a canvas covered
+   * in advice is just a different kind of unusable, and none of those stop you
+   * finishing a first pass. These two do: without a box there is nothing to
+   * save, and without an approval the export comes out empty.
+   *
+   * Every condition is derived from real state, so each hint disappears the
+   * moment the thing it asks for exists — no "seen" counters, and nothing to
+   * get out of step with the data.
+   *
+   * The no-classes case is deliberately absent: it has a blocking overlay
+   * already (.ann-guard), because with no classes there is genuinely nothing
+   * to do on the canvas. These two must NOT block — they appear while you are
+   * meant to be drawing.
+   */
+  const coach = useMemo(() => {
+    if (guideDismissed || !bootstrapped || imgLoading) return null;
+    if (!guide.hasClass) return null;
+    if (!guide.hasAnnotation) {
+      return {
+        id: "draw",
+        key: "B",
+        text: "and drag on the image to draw your first box.",
+      };
+    }
+    if (!guide.hasApproved) {
+      return {
+        id: "approve",
+        key: "A",
+        text: "to approve this image. Exports only include approved images.",
+      };
+    }
+    return null;
+  }, [guideDismissed, bootstrapped, imgLoading, guide]);
   const selected = useMemo(
     () => annotations.find((a) => a.clientId === selectedId) ?? null,
     [annotations, selectedId]
@@ -1770,14 +1846,18 @@ export default function AnnotateEditor() {
   const position =
     queueIndex >= 0 ? `${queueIndex + 1} / ${queueTotal}` : `— / ${queueTotal}`;
 
-  const TOOL_BUTTONS: { id: Tool; label: string; icon: ReactNode }[] = [
-    { id: "select", label: "Select (V)", icon: ICONS.select },
-    { id: "bbox", label: "Bounding box (B)", icon: ICONS.bbox },
-    { id: "polygon", label: "Polygon (P)", icon: ICONS.polygon },
-    { id: "pan", label: "Pan (H)", icon: ICONS.pan },
-    { id: "crop", label: "Crop (X) — replaces the stored image", icon: "⤧" },
-    { id: "brush", label: "Brush (G) — paint a segmentation mask", icon: "🖌" },
-    { id: "eraser", label: "Eraser (E) — erase from a mask", icon: "🩹" },
+  // `key` is rendered under each icon. An icon rail is only self-explanatory to
+  // someone who already knows the tools; the letter is the part you can act on
+  // without hovering, and it teaches the shortcut at the moment you reach for
+  // the mouse instead of in a help sheet you have to go and open.
+  const TOOL_BUTTONS: { id: Tool; label: string; key: string; icon: ReactNode }[] = [
+    { id: "select", label: "Select / move", key: "V", icon: ICONS.select },
+    { id: "bbox", label: "Bounding box", key: "B", icon: ICONS.bbox },
+    { id: "polygon", label: "Polygon", key: "P", icon: ICONS.polygon },
+    { id: "pan", label: "Pan the canvas", key: "H", icon: ICONS.pan },
+    { id: "crop", label: "Crop — replaces the stored image", key: "X", icon: ICONS.crop },
+    { id: "brush", label: "Brush — paint a segmentation mask", key: "G", icon: ICONS.brush },
+    { id: "eraser", label: "Eraser — erase from a mask", key: "E", icon: ICONS.eraser },
   ];
 
   return (
@@ -1923,10 +2003,13 @@ export default function AnnotateEditor() {
             <button
               key={t.id}
               className={`ann-tool ${tool === t.id ? "ann-tool--active" : ""}`}
-              title={t.label}
+              title={`${t.label} (${t.key})`}
+              aria-label={t.label}
+              aria-pressed={tool === t.id}
               onClick={() => setTool(t.id)}
             >
               {t.icon}
+              <span className="ann-tool__key" aria-hidden="true">{t.key}</span>
             </button>
           ))}
           <div className="ann-toolbar__sep" />
@@ -1935,9 +2018,12 @@ export default function AnnotateEditor() {
           <button
             className={`ann-tool ${showAnnotations ? "" : "ann-tool--off"}`}
             title={showAnnotations ? "Hide annotations (T)" : "Show annotations (T)"}
+            aria-label={showAnnotations ? "Hide annotations" : "Show annotations"}
+            aria-pressed={!showAnnotations}
             onClick={() => setShowAnnotations((v) => !v)}
           >
-            {showAnnotations ? "◉" : "◎"}
+            {showAnnotations ? ICONS.eyeOn : ICONS.eyeOff}
+            <span className="ann-tool__key" aria-hidden="true">T</span>
           </button>
         </div>
 
@@ -2121,6 +2207,29 @@ export default function AnnotateEditor() {
               </div>
             )}
 
+            {/* Coach strip. pointer-events:none on the wrapper so it can sit
+                over the canvas without intercepting a drag that starts
+                underneath it — the hint tells you to draw, so it must not be
+                the thing preventing you. Only the dismiss button takes
+                pointer events back. */}
+            {coach && (
+              <div className="ann-coach" key={coach.id}>
+                <div className="ann-coach__box">
+                  <span className="ann-coach__text">
+                    Press <kbd className="ann-kbd">{coach.key}</kbd> {coach.text}
+                  </span>
+                  <button
+                    className="ann-coach__x"
+                    onClick={dismissGuide}
+                    title="Hide tips for this dataset"
+                    aria-label="Hide tips"
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* loading / error */}
             {(imgLoading || (!!imgUrl && !imgReady && !imgError)) && (
               <div className="ann-canvas__loading">
@@ -2296,8 +2405,13 @@ export default function AnnotateEditor() {
             </form>
           </div>
 
-          {/* Annotations on this image */}
-          <div className="ann-side__section">
+          {/* Annotations on this image.
+              --grow: this is the only section whose content changes length as
+              you work, so it takes the panel's free space instead of leaving a
+              dead gap under Progress. On a long list it scrolls internally,
+              which keeps Tags and Progress reachable without scrolling the
+              whole panel past them. */}
+          <div className="ann-side__section ann-side__section--grow">
             <div className="ann-side__titlerow">
               <div className="ann-side__title">
                 Annotations ({shapes.length + maskAnnotations.length})

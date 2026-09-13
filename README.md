@@ -246,9 +246,9 @@ Publishing a version tag builds and pushes the prebuilt images so users install 
 ```bash
 # 1. Bump the version in the SAME commit you are about to tag. Three files,
 #    and they must agree — the app reads VERSION to report its own build:
-#      VERSION                                  -> 0.1.6   (no leading "v")
-#      frontend/Frontend/package.json           -> 0.1.6
-#      frontend/Frontend/package-lock.json      -> 0.1.6   (both fields)
+#      VERSION                                  -> 0.1.7   (no leading "v")
+#      frontend/Frontend/package.json           -> 0.1.7
+#      frontend/Frontend/package-lock.json      -> 0.1.7   (both fields)
 #    npm ci refuses to run if the last two disagree, so a half-done bump
 #    fails the frontend image build rather than shipping quietly.
 
@@ -259,15 +259,15 @@ git push origin main
 git log --oneline -1 origin/main     # confirm this is the commit you mean
 
 # 3. Then tag that commit and push the tag.
-git tag v0.1.6
-git push origin v0.1.6
+git tag v0.1.7
+git push origin v0.1.7
 ```
 
 The tag carries the `v`; `VERSION` does not. CI passes the tag to the image as
 `APP_VERSION`, which takes precedence over `VERSION` at runtime, so
-`/api/v1/version` returns `v0.1.6` from a released image and `0.1.6` from a
+`/api/v1/version` returns `v0.1.7` from a released image and `0.1.7` from a
 local `-Build` of the same source. The sidebar strips any leading `v` before
-rendering, so both display as **v0.1.6** — the difference is only visible in
+rendering, so both display as **v0.1.7** — the difference is only visible in
 the raw endpoint.
 
 Check `git tag --list` first — reusing a version that already exists is refused
