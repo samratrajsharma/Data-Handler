@@ -155,6 +155,23 @@ Combine freely (e.g. `.\run.ps1 -Fresh -Llm`):
 
 To use AI labelling, add a provider under **Settings** (or start Ollama with the `-Llm` flag).
 
+### Object storage
+
+The stack runs **SeaweedFS** for S3-compatible object storage (images, exports).
+It replaced MinIO in 0.1.9: `minio/minio` stopped being publicly pullable from
+both Docker Hub and quay.io, which broke every clean install while machines
+with a cached copy kept working. SeaweedFS is Apache-2.0, freely pullable, and
+published for both x86-64 and ARM — so Apple Silicon works natively.
+
+No application code changed. `core/storage.py` builds a `minio` Python client,
+which is a generic S3 client; only the endpoint and port moved (8333, was 9000).
+
+> **Upgrading from 0.1.8 or earlier:** the two servers lay bytes out differently,
+> so images uploaded under MinIO are not readable by SeaweedFS even though the
+> volume is shared. Either re-upload your datasets, or keep MinIO with
+> `docker compose --profile minio up -d` and set `MINIO_ENDPOINT=minio:9000`
+> in `.env` — that path needs a MinIO image you can still pull.
+
 ## Configuration
 
 Configuration is read from a `.env` file (created automatically from `.env.example` on first run). Key variables:

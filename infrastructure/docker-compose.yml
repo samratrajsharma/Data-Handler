@@ -34,7 +34,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      minio:
+      seaweedfs:
         condition: service_started
       redis:
         condition: service_healthy
@@ -62,7 +62,63 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # --- Object storage (S3) -------------------------------------------------
+  # SeaweedFS, not MinIO.
+  #
+  # WHY THE SWITCH
+  # minio/minio became unpullable from Docker Hub AND quay.io in Sept 2026 —
+  # the repository now requires authentication, including by digest. Existing
+  # machines kept working from their Docker cache, so the break was invisible
+  # until a clean runner tried to install. Every NEW user was already broken.
+  #
+  # WHY SEAWEEDFS SPECIFICALLY
+  #   - Apache-2.0 and freely pullable, with no redistribution question.
+  #   - Published multi-arch (amd64 AND arm64), so Apple Silicon works
+  #     natively. Mirroring our cached MinIO image could not do this: that
+  #     cache holds a single platform, so an M-series Mac would have been
+  #     stuck on x86 emulation for a storage service.
+  #   - Speaks S3 with SigV4, including presigned GETs, which is the only
+  #     part of the API this app truly depends on.
+  #
+  # NO APPLICATION CODE CHANGED. core/storage.py builds a `minio` Python
+  # client, which is a generic S3 client — the library name is a historical
+  # accident, not a coupling. Only the endpoint and port move.
+  seaweedfs:
+    image: ${S3_IMAGE:-chrislusf/seaweedfs:latest}
+    container_name: datahandler-s3
+    ports:
+      - "127.0.0.1:8333:8333"
+    # -dir is the data root; the volume below is the SAME one MinIO used, so
+    # an existing install keeps its files on disk. They are not readable by
+    # SeaweedFS (different on-disk layout), which is why the upgrade note in
+    # .env.example tells you to re-upload rather than pretending otherwise.
+    command: >
+      server -dir=/data -s3 -s3.port=8333
+      -s3.config=/etc/seaweedfs/s3.json
+      -master.volumeSizeLimitMB=1024
+    volumes:
+      - minio_data:/data
+      - ./seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      # The S3 port answering is what the app needs; the master UI is not
+      # enough, because the gateway comes up after the master.
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8333 >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    networks:
+      - datahandler-net
+    restart: unless-stopped
+
+  # --- MinIO (legacy, opt-in) ---------------------------------------------
+  # Kept behind a profile so anyone who still has a pullable MinIO image — a
+  # cached copy, a private mirror — can use it:
+  #   docker compose --profile minio up -d
+  # and set MINIO_ENDPOINT=minio:9000 / MINIO_PUBLIC_ENDPOINT=localhost:9000.
+  # It does NOT start by default; the default install must work for everyone.
   minio:
+    profiles: ["minio"]
     image: ${MINIO_IMAGE:-minio/minio:latest}
     container_name: datahandler-minio
     ports:
@@ -129,7 +185,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      minio:
+      seaweedfs:
         condition: service_started
     networks:
       - datahandler-net

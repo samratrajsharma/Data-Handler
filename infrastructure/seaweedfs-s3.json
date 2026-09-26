@@ -1,0 +1,31 @@
+{
+  "_comment": [
+    "SeaweedFS S3 credentials. Without this file the S3 gateway runs with NO",
+    "authentication at all — anyone who can reach port 8333 could read or",
+    "delete every image in every dataset. The ports are bound to 127.0.0.1 in",
+    "docker-compose.yml, but defence in depth is the point: a future change",
+    "that exposes the port should not also remove the only access control.",
+    "",
+    "The keys deliberately match the previous MinIO defaults so MINIO_ACCESS_KEY",
+    "and MINIO_SECRET_KEY in .env keep working unchanged. Change both here and",
+    "in .env together if you change them at all."
+  ],
+  "identities": [
+    {
+      "name": "datahandler",
+      "credentials": [
+        {
+          "accessKey": "minioadmin",
+          "secretKey": "minioadmin"
+        }
+      ],
+      "actions": [
+        "Admin",
+        "Read",
+        "Write",
+        "List",
+        "Tagging"
+      ]
+    }
+  ]
+}

@@ -80,7 +80,7 @@ jobs:
         run: |
           set -a; . ./.env; set +a
           fail=0
-          for img in "${MINIO_IMAGE}" "${QDRANT_IMAGE}" "postgres:15-alpine" "redis:7-alpine"; do
+          for img in "${S3_IMAGE}" "${QDRANT_IMAGE}" "postgres:15-alpine" "redis:7-alpine"; do
             if docker pull -q "$img" >/dev/null 2>&1; then
               echo "  OK        $img"
             else
@@ -193,6 +193,15 @@ jobs:
             422) echo "::error::analytics is shadowed by a path-param route"; exit 1 ;;
             5*)  echo "::error::analytics returned $code - the aggregate SQL is broken"; exit 1 ;;
           esac
+
+      # Swapping object stores is a config change that CANNOT be validated by a
+      # type check or a healthcheck: a stack where every container is green can
+      # still be one where no image reaches a browser, because presigned GETs
+      # are an offline signature that only fails when actually fetched.
+      - name: Assert the object store serves presigned URLs
+        run: |
+          docker compose -f infrastructure/docker-compose.yml exec -T api \
+            python scripts/check_object_store.py
 
       # The baseline migration is hand-written (no database was available to
       # autogenerate against), so it is verified rather than trusted: a clean
