@@ -24,6 +24,11 @@ Exits non-zero on the first real failure so it can gate a release.
 import io
 import sys
 import uuid
+from pathlib import Path
+
+# `python scripts/check_object_store.py` puts .../scripts on sys.path[0], not
+# the repo root, so `import core` fails. Same trap as scripts/diagnose_clip.py.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 GRN, RED, YEL, DIM, OFF = "\033[32m", "\033[31m", "\033[33m", "\033[2m", "\033[0m"
 
@@ -101,51 +106,67 @@ except SystemExit:
 except Exception as exc:
     die(f"get_object failed: {str(exc).splitlines()[0][:140]}")
 
-# ── 5. Presign ───────────────────────────────────────────────────────────
-# Uses the PUBLIC client, exactly as the app does: same host the browser is
-# handed. Signing is offline, so this passing means nothing on its own.
+# ── 5. Presign, signed for the endpoint we will actually call ────────────
+# WHAT THIS FILE GOT WRONG THE FIRST TIME
+# It presigned with the PUBLIC client (localhost:8333), then rewrote the host
+# to the internal one before fetching, on the stated belief that "the signature
+# covers the path and query, not the host". That is false. SigV4 presigned URLs
+# carry SignedHeaders=host, so the Host header is part of the canonical request
+# and rewriting it guarantees SignatureDoesNotMatch. The test reported a
+# SeaweedFS incompatibility that was entirely its own doing.
+#
+# To test SigV4 compatibility we must fetch the URL at the host it was signed
+# for. From inside this container that is the INTERNAL endpoint, so we presign
+# with the internal client and call it unmodified.
 from datetime import timedelta  # noqa: E402
 
 try:
-    url = get_minio_public_client().presigned_get_object(
+    internal_url = client.presigned_get_object(
         bucket, key, expires=timedelta(minutes=5),
     )
-    ok("presigned a GET url")
-    info(url[:110] + ("…" if len(url) > 110 else ""))
+    ok("presigned a GET url (signed for the internal endpoint)")
 except Exception as exc:
     die(f"presigned_get_object failed: {str(exc).splitlines()[0][:140]}")
 
-# ── 6. Actually fetch it, unauthenticated ────────────────────────────────
-# THE TEST THAT MATTERS. If this fails, every image in the annotator is a
-# broken thumbnail even though the stack is "healthy".
-#
-# MINIO_PUBLIC_ENDPOINT is the host address (localhost:8333) because the URL is
-# for a browser. From inside this container "localhost" is the container, so
-# the host part is rewritten to the internal endpoint before fetching. The
-# SIGNATURE covers the path and query, not the host, so this is a faithful test
-# of whether the signature is accepted.
+# ── 6. Fetch it unauthenticated, host untouched ──────────────────────────
+# THE TEST THAT MATTERS. Presigning is an offline signature, so step 5 passes
+# whether or not the server would accept it. Only an actual unauthenticated
+# request proves the server validates what minio-py produces.
 import urllib.request  # noqa: E402
 import urllib.error  # noqa: E402
 
-fetch_url = url.replace(
-    f"//{settings.MINIO_PUBLIC_ENDPOINT}", f"//{settings.MINIO_ENDPOINT}", 1
-)
 try:
-    with urllib.request.urlopen(fetch_url, timeout=15) as resp:
+    with urllib.request.urlopen(internal_url, timeout=15) as resp:
         body = resp.read()
         code = resp.getcode()
 except urllib.error.HTTPError as exc:
     detail = exc.read()[:300].decode("utf-8", "replace")
     die(f"presigned GET returned HTTP {exc.code}",
-        "The signature was rejected. This object store's SigV4 presigning is "
-        "not compatible with the minio-py client, so NO image would load in "
-        f"the annotator.\n        Server said: {detail}")
+        "The server rejected a signature produced by minio-py. This object "
+        "store's SigV4 presigning is genuinely incompatible, so NO image would "
+        f"load in the annotator.\n        Server said: {detail}")
 except Exception as exc:
     die(f"presigned GET could not be fetched: {str(exc).splitlines()[0][:140]}")
 
 if body != payload:
     die(f"presigned GET returned {len(body)} bytes, expected {len(payload)}")
 ok(f"presigned GET fetched {len(body)} bytes with no credentials (HTTP {code})")
+
+# ── 6b. The browser-facing URL ───────────────────────────────────────────
+# Signed for MINIO_PUBLIC_ENDPOINT, which is the HOST address. It cannot be
+# fetched from in here — "localhost" is this container — and rewriting the host
+# would break the signature, which is the mistake above. So it is printed for
+# an optional check from the host machine, where localhost IS the S3 service.
+try:
+    public_url = get_minio_public_client().presigned_get_object(
+        bucket, key, expires=timedelta(minutes=10),
+    )
+    ok("presigned a browser-facing url (signed for MINIO_PUBLIC_ENDPOINT)")
+    info("Optional check from your machine, where localhost resolves correctly:")
+    info(f'  curl -s -o NUL -w "%{{http_code}}" "{public_url}"')
+    info("  200 = browsers will load images. 403 = MINIO_PUBLIC_ENDPOINT is wrong.")
+except Exception as exc:
+    die(f"public presign failed: {str(exc).splitlines()[0][:140]}")
 
 # ── 7. Clean up ──────────────────────────────────────────────────────────
 try:

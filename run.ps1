@@ -282,7 +282,7 @@ if ($workerFailed) { Warn "Stack is up, but the background worker is down (see a
 Ok "Stack is up."
 Write-Host "  App (UI) ......... $APP_URL"                        -ForegroundColor White
 Write-Host "  API + Swagger .... $API_URL/docs"                   -ForegroundColor Gray
-Write-Host "  MinIO console .... http://localhost:9001"           -ForegroundColor Gray
+Write-Host "  Object store ..... http://localhost:8333  (SeaweedFS S3)"           -ForegroundColor Gray
 Write-Host "  Qdrant ........... http://localhost:6333/dashboard" -ForegroundColor Gray
 Write-Host ""
 Write-Host "  Flags: -Build  -Fresh  -Llm  -Stop  -NoBrowser  -Logs" -ForegroundColor DarkGray
