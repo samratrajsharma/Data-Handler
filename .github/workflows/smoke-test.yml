@@ -66,6 +66,33 @@ jobs:
       - name: Create .env from the example
         run: cp .env.example .env
 
+      # Pull the third-party images FIRST, on their own, so a registry that has
+      # withdrawn a tag reports as exactly that. When this was folded into the
+      # build step, minio/minio:latest going private surfaced as a generic
+      # "Process completed with exit code 1" on a step called "Build and start
+      # the stack" — which reads like our Dockerfile broke. It took four
+      # separate investigations to reach the one line that mattered.
+      #
+      # continue-on-error is deliberate: this step exists to LABEL the failure,
+      # not to gate on it. The build step below still fails the job.
+      - name: Check third-party images are still pullable
+        continue-on-error: true
+        run: |
+          set -a; . ./.env; set +a
+          fail=0
+          for img in "${MINIO_IMAGE}" "${QDRANT_IMAGE}" "postgres:15-alpine" "redis:7-alpine"; do
+            if docker pull -q "$img" >/dev/null 2>&1; then
+              echo "  OK        $img"
+            else
+              echo "::error::UPSTREAM IMAGE UNAVAILABLE: $img"
+              echo "  This is not a code failure. The registry withdrew or gated"
+              echo "  this tag. Override it in .env (MINIO_IMAGE / QDRANT_IMAGE)"
+              echo "  with a working tag, a digest, or your own mirror."
+              fail=1
+            fi
+          done
+          exit $fail
+
       # Builds from THIS commit rather than pulling GHCR, so the test covers the
       # code being pushed instead of the last published image.
       - name: Build and start the stack
