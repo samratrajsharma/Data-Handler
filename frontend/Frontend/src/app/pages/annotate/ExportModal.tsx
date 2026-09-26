@@ -235,10 +235,23 @@ export default function ExportModal({ datasetId, summary, onClose, onSummaryChan
             Only split annotated images
           </label>
           {splitResult ? (
-            <div className="ann-export__split-result">
-              Assigned {splitResult.assigned}: train {splitResult.train} · valid{" "}
-              {splitResult.valid} · test {splitResult.test}
-            </div>
+            splitResult.assigned === 0 ? (
+              // "Only split annotated images" is on by default, so running
+              // auto-split before labelling assigns nothing at all — and the
+              // export then puts everything in train/, which looks exactly
+              // like a split that worked. Say so here, where it is fixable.
+              <div className="ann-export__split-result ann-export__split-result--warn">
+                Nothing was assigned — no images are annotated yet. Untick
+                &ldquo;Only split annotated images&rdquo; to split the whole
+                dataset, or label some images first. Exporting now puts
+                everything in <code>train/</code>.
+              </div>
+            ) : (
+              <div className="ann-export__split-result">
+                Assigned {splitResult.assigned}: train {splitResult.train} · valid{" "}
+                {splitResult.valid} · test {splitResult.test}
+              </div>
+            )
           ) : splits ? (
             <div className="ann-export__split-result">
               Current: train {splits.train} · valid {splits.valid} · test {splits.test} ·

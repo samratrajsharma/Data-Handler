@@ -96,6 +96,17 @@ run.cmd
 
 Flags pass straight through — `run.cmd -Build`, `run.cmd -Fresh -Llm`.
 
+**Desktop shortcut (optional).** Run **`install-shortcut.cmd`** once to put a
+*Data Handler* shortcut on your Desktop. After that: start Docker Desktop, then
+double-click the shortcut. Use `-Path` to put it somewhere else:
+
+```
+install-shortcut.cmd -Path "C:\Users\me\Documents"
+```
+
+The shortcut does not start Docker itself — if the engine isn't running yet,
+`run.ps1` says so rather than hanging on a window with no explanation.
+
 > **Why `run.cmd` and not `run.ps1`?** Windows marks files extracted from a
 > downloaded ZIP as untrusted, and PowerShell refuses to run an untrusted
 > `.ps1` ("*is not digitally signed*"). `run.cmd` is a three-line wrapper that

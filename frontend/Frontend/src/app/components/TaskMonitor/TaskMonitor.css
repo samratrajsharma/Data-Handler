@@ -11,7 +11,16 @@
   height: 100%;
   border-radius: 6px;
   background: linear-gradient(90deg, var(--brand-indigo), var(--brand-violet), var(--brand-cyan));
-  transition: width 0.4s ease;
+  /* Matched to the 1000ms poll in useTaskPolling, and LINEAR on purpose.
+     Progress arrives as discrete samples, so the bar is always animating from
+     the last one to the current one. If the transition is shorter than the
+     sample period it finishes early and the bar sits frozen until the next
+     sample — 0.4s of movement then 1.6s of nothing, which is what read as
+     lag. Slightly longer than the period means there is always an animation
+     in flight. `ease` would accelerate and decelerate on every sample, making
+     a steady download look like it is pulsing; a quantity that advances at a
+     constant rate should be interpolated at a constant rate. */
+  transition: width 1.1s linear;
   min-width: 2px;
 }
 .tm-bar__label {

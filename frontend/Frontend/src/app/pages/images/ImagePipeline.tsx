@@ -79,7 +79,23 @@ export default function ImagePipeline() {
     if (task.status === "completed") {
       if (lastRun === "clustering") { loadClusters(); setTab("clusters"); }
       else if (lastRun === "prepare") { setModelReady(true); }
-      else { setEmbeddingsDone(true); loadGallery(); }
+      else {
+        // Derive readiness from what the run actually produced, never from
+        // the mere fact that it finished. loadGallery() re-reads
+        // embedded_count from the server and is the single source of truth;
+        // the count below only decides whether to say something.
+        const res = (task.result ?? {}) as { count?: number; already_embedded?: number };
+        const embedded = (res.count ?? 0) + (res.already_embedded ?? 0);
+        if (embedded === 0) {
+          setEmbeddingsDone(false);
+          alert(
+            "No embeddings were produced — this dataset has no images to embed.\n\n" +
+            "Clustering needs embeddings, so it stays disabled."
+          );
+        }
+        loadGallery();
+        refreshModelStatus();   // the run may have just downloaded the model
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task?.status, taskId, lastRun]);
@@ -238,8 +254,12 @@ export default function ImagePipeline() {
                 </div>
                 <div className="pipe-step__action">
                   <button className="btn btn--primary btn--sm" onClick={runEmbeddings}
-                    disabled={!modelReady || running}
-                    title={!modelReady ? "Prepare the model first" : ""}>
+                    disabled={running}
+                    title={
+                      modelReady === false
+                        ? "The CLIP model will download first (about 600 MB, once)"
+                        : "Generate CLIP embeddings for every image"
+                    }>
                     {embeddingsDone ? "Re-generate" : "Generate"}
                   </button>
                 </div>
@@ -249,7 +269,18 @@ export default function ImagePipeline() {
                 <span className="pipe-step__n">3</span>
                 <div className="pipe-step__body">
                   <div className="pipe-step__title">Cluster</div>
-                  <div className="pipe-step__sub">Groups visually-similar images. Browse them in the Clusters tab.</div>
+                  {/* The reason a step is blocked has to be rendered HERE, not
+                      in the button's title. `.btn:disabled` sets
+                      pointer-events: none, so a disabled button never receives
+                      hover and its tooltip can never appear — every
+                      "title={disabled ? 'why' : ''}" in this file was
+                      unreachable text. A dimmed button with no explanation is
+                      exactly what makes people click it repeatedly. */}
+                  <div className="pipe-step__sub">
+                    {embeddingsDone
+                      ? "Groups visually-similar images. Browse them in the Clusters tab."
+                      : "Needs embeddings — run step 2 first."}
+                  </div>
                 </div>
                 <div className="pipe-step__action">
                   <button className="btn btn--secondary btn--sm" onClick={runClustering}

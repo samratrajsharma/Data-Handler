@@ -35,6 +35,14 @@
 .dash__label, .dash__brand {
   max-width: 180px;
   overflow: hidden;
+  /* REQUIRED, not cosmetic. max-width animates from 0 to 180px, and at every
+     width in between the text is free to re-wrap: "Data Handler" breaks onto
+     two lines partway through the slide, the header grows, everything below it
+     shifts, and it all snaps back when the animation ends. nowrap turns the
+     label into a single-line ribbon that max-width clips instead of reflows.
+     The nav labels inherit nowrap from .dash__nav-item; the brand had no such
+     parent, which is why it was the visible one. */
+  white-space: nowrap;
   opacity: 1;
   transition: opacity 0.16s ease 0.04s,
               max-width 0.22s cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -101,7 +109,28 @@
 .dash--rail .dash__sidebar:not(:hover) .dash__nav-item,
 .dash--rail .dash__sidebar:not(:hover) .dash__theme,
 .dash--rail .dash__sidebar:not(:hover) .dash__logo { justify-content: center; }
-.dash--rail .dash__sidebar:not(:hover) .dash__modes { flex-direction: column; }
+/* Collapse the mode switch to the ACTIVE mode only.
+   Previously this flipped the row to `flex-direction: column`, which turned a
+   one-row control into a three-row one: everything below shifted down by two
+   rows on every collapse, and the stack was the most obviously "jumping" part
+   of the animation. Hiding the two idle modes keeps the control exactly one
+   row tall in both states, so only the width animates and the vertical order
+   is identical collapsed or open. */
+.dash--rail .dash__sidebar:not(:hover) .dash__mode--idle {
+  display: none;
+}
+/* With one child left the segmented-control chrome reads as a box around a
+   lone icon, so it drops away and the active mode becomes a plain rail item
+   like the ones above and below it. */
+.dash--rail .dash__sidebar:not(:hover) .dash__modes {
+  background: transparent;
+  padding: 0;
+  margin: 6px 10px 2px;
+}
+.dash--rail .dash__sidebar:not(:hover) .dash__mode--active {
+  box-shadow: none;
+  background: var(--accent-dim);
+}
 .dash--rail .dash__sidebar:not(:hover) .dash__sidebar-header { justify-content: center; }
 .dash--rail .dash__sidebar:not(:hover) .dash__toggle { display: none; }
 
@@ -118,12 +147,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  color: var(--dash-on-primary);
-  background: var(--accent-strong);
-  border-radius: 9px;
+  /* The glyph carries the accent; there is no filled plate behind it. A solid
+     orange square was the heaviest element in the sidebar and pulled the eye
+     away from the navigation, which is what the sidebar is for. */
+  color: var(--accent-text);
   user-select: none;
 }
 /* NOTE: the header padding is deliberately NOT overridden on the rail. It was,

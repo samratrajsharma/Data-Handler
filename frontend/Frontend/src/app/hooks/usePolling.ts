@@ -62,7 +62,12 @@ export function formatRate(bytesPerSec: number): string {
   return `${Math.round(bytesPerSec)} B/s`;
 }
 
-export function useTaskPolling(taskId: string | null, interval = 2000) {
+// 1000ms, paired deliberately with the ~1.1s CSS transition on the progress
+// bar: when the sample period and the animation duration match, one glide ends
+// exactly as the next begins and the bar advances continuously. At the old
+// 2000ms with a 0.4s transition it moved for 0.4s and then sat still for 1.6s,
+// which reads as lag rather than as slow progress.
+export function useTaskPolling(taskId: string | null, interval = 1000) {
   const [task, setTask] = useState<TaskStatus | null>(null);
   const [polling, setPolling] = useState(false);
   const [steps, setSteps] = useState<TaskStep[]>([]);
@@ -117,8 +122,15 @@ export function useTaskPolling(taskId: string | null, interval = 2000) {
           });
 
           // Derive transfer speed from successive byte readings. Smoothed with
-          // an EMA because the sampling interval (2s) against a counter that
-          // moves in bursts produces a very jumpy instantaneous figure.
+          // an EMA because the counter moves in bursts (the cache grows as
+          // whole blobs land), so the instantaneous figure is very jumpy.
+          //
+          // The weight is tied to the poll interval. An EMA's responsiveness
+          // is per-SAMPLE, not per-second: halving the interval to 1000ms
+          // while keeping the old 0.4 weight would halve the time constant
+          // and make the readout twice as twitchy — a faster poll would have
+          // made the number harder to read, not easier. 0.2 restores roughly
+          // the previous smoothing in wall-clock terms.
           const parsed = parseBytes(msg);
           if (parsed) {
             const now = Date.now();
@@ -128,7 +140,7 @@ export function useTaskPolling(taskId: string | null, interval = 2000) {
               // Ignore non-advances: a flat or reset counter is not a speed.
               if (delta > 0) {
                 const instant = (delta * 1000) / (now - prev.t);
-                setRate((r) => (r > 0 ? r * 0.6 + instant * 0.4 : instant));
+                setRate((r) => (r > 0 ? r * 0.8 + instant * 0.2 : instant));
               }
             }
             sampleRef.current = { bytes: parsed.done, t: now };

@@ -49,11 +49,86 @@ def generate_image_embeddings(self, dataset_id: str):
         )
 
         if not images:
-            complete_task(
-                db, celery_task_id,
-                result={"message": "No unprocessed images found", "count": 0},
+            # NOTHING TO DO — or the two stores have drifted apart.
+            #
+            # An embedding lives in TWO places: `image_assets.embedding_id` in
+            # Postgres says "this image is embedded", and the vector itself is
+            # in Qdrant. There is no transaction across them, so anything that
+            # empties Qdrant without clearing Postgres — its volume removed, a
+            # failed upsert, a container recreated without its volume — leaves
+            # Postgres asserting work that no longer exists.
+            #
+            # The old code trusted Postgres alone. The result was a dead end
+            # you could not escape from the UI: this task returned "No
+            # unprocessed images found" in under a second and never loaded
+            # CLIP, clustering then found zero vectors and reported success,
+            # and re-running either changed nothing. The only way out was
+            # `-Fresh`, which wipes every volume and so happens to make the two
+            # stores agree again.
+            #
+            # So when Postgres claims everything is embedded, verify that claim
+            # against Qdrant before believing it.
+            claimed = (
+                db.query(ImageAsset)
+                .filter(
+                    ImageAsset.dataset_id == dataset_id,
+                    ImageAsset.embedding_id.isnot(None),
+                )
+                .count()
             )
-            return {"message": "No unprocessed images found", "count": 0}
+            stale = False
+            if claimed:
+                try:
+                    from qdrant_client import QdrantClient
+                    from core.settings import settings as _s
+
+                    qc = QdrantClient(host=_s.QDRANT_HOST, port=_s.QDRANT_PORT)
+                    names = {c.name for c in qc.get_collections().collections}
+                    coll = f"{dataset_id}_images"
+                    live = (
+                        qc.count(collection_name=coll, exact=True).count
+                        if coll in names else 0
+                    )
+                    if live == 0:
+                        stale = True
+                        logger.warning(
+                            "Dataset %s: Postgres claims %d embedded images but "
+                            "Qdrant holds %d vectors — clearing embedding_id so "
+                            "they can be regenerated.",
+                            dataset_id, claimed, live,
+                        )
+                except Exception as exc:
+                    # Qdrant unreachable is a different failure; do not clear
+                    # Postgres on the strength of a connection error.
+                    logger.error("Could not verify embeddings against Qdrant: %s", exc)
+
+            if stale:
+                # Self-heal: drop the stale claim and fall through to re-embed.
+                db.query(ImageAsset).filter(
+                    ImageAsset.dataset_id == dataset_id,
+                    ImageAsset.embedding_id.isnot(None),
+                ).update({ImageAsset.embedding_id: None}, synchronize_session=False)
+                db.commit()
+                images = (
+                    db.query(ImageAsset)
+                    .filter(
+                        ImageAsset.dataset_id == dataset_id,
+                        ImageAsset.embedding_id.is_(None),
+                    )
+                    .all()
+                )
+
+            if not images:
+                msg = (
+                    f"All {claimed} image(s) already have embeddings — nothing to do."
+                    if claimed else
+                    "This dataset has no images to embed."
+                )
+                complete_task(
+                    db, celery_task_id,
+                    result={"message": msg, "count": 0, "already_embedded": claimed},
+                )
+                return {"message": msg, "count": 0, "already_embedded": claimed}
 
         total = len(images)
         logger.info(
@@ -237,6 +312,18 @@ def run_image_clustering(self, dataset_id: str, min_cluster_size: int = 5):
         )
 
         collection_name = f"{dataset_id}_images"
+
+        # A missing collection is not an empty one. scroll() on a collection
+        # that does not exist raises, and the generic handler at the bottom
+        # turned that into an opaque failure — so check first and say plainly
+        # what is wrong.
+        existing = {c.name for c in qdrant.get_collections().collections}
+        if collection_name not in existing:
+            raise RuntimeError(
+                "No embeddings exist for this dataset yet. Run 'Generate "
+                "embeddings' and let it finish, then cluster."
+            )
+
         all_points = []
         offset = None
 
@@ -253,9 +340,29 @@ def run_image_clustering(self, dataset_id: str, min_cluster_size: int = 5):
                 break
             offset = next_offset
 
+        # THIS USED TO SUCCEED WITH ZERO VECTORS.
+        # complete_task(result=...) marks a task COMPLETED, so "no embeddings
+        # at all" and "clustered successfully" were indistinguishable to the
+        # UI: the progress bar filled, no error appeared, and no clusters
+        # showed up. That is what made clustering look like it needed several
+        # clicks — every click "worked" and produced nothing.
+        #
+        # Zero vectors is a precondition failure and is now reported as one.
+        # Too-few-but-nonzero stays a completion, because that is a real
+        # answer: the data is there, it just cannot form a cluster this size.
+        if not all_points:
+            raise RuntimeError(
+                "No embeddings found for this dataset. Run 'Generate "
+                "embeddings' first and wait for it to finish."
+            )
+
         if len(all_points) < min_cluster_size:
             result = {
-                "warning": "Too few vectors for clustering",
+                "warning": (
+                    f"Only {len(all_points)} embedded image(s) — fewer than the "
+                    f"minimum cluster size of {min_cluster_size}. Lower the "
+                    "minimum or embed more images."
+                ),
                 "vector_count": len(all_points),
                 "min_cluster_size": min_cluster_size,
             }
@@ -388,7 +495,13 @@ def ensure_clip_model(celery_task_id: str, lo: float = 0.05, hi: float = 0.35) -
                     update_task_progress(tdb, celery_task_id, lo + (hi - lo) * frac, msg)
                 except Exception:
                     pass
-                stop.wait(1.0)
+                # 0.4s, not 1s. The bar can only be as fresh as the slowest
+                # link in the chain: worker sample -> Postgres -> browser poll.
+                # At 1s sampling plus a 2s poll the number on screen was up to
+                # three seconds stale, which on a 60-second download is a bar
+                # that moves in five visible jerks. One UPDATE of two columns
+                # every 400ms is nothing next to a 600 MB download.
+                stop.wait(0.4)
         finally:
             tdb.close()
 

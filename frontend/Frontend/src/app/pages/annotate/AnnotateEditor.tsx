@@ -724,13 +724,40 @@ export default function AnnotateEditor() {
    *  Stepping with the arrows is fine for neighbours but useless for "go back
    *  to roughly image 400 of 900". */
   const jumpToIndex = useCallback(
-    (oneBased: number) => {
-      const q = latest.current.queue;
-      const i = Math.min(Math.max(1, Math.trunc(oneBased)), q.length) - 1;
-      const target = q[i];
-      if (target) void goTo(target.asset_id);
+    async (oneBased: number) => {
+      // BUG THIS FIXES: this used to clamp against `queue.length` — the number
+      // of items LOADED so far, not the number that exist. The queue pages in
+      // at QUEUE_PAGE (100) via infinite scroll, so with 500 loaded, typing
+      // 600 clamped to 500 and jumped there. It looked like "it subtracts 100"
+      // because the loaded count is always a multiple of the page size.
+      //
+      // The position is a property of the dataset, not of what the browser has
+      // scrolled to, so it is resolved against `queueTotal` and fetched from
+      // the server with skip/limit. One row, any N, no scrolling required.
+      const total = latest.current.queueTotal;
+      if (!total) return;
+      const n = Math.min(Math.max(1, Math.trunc(oneBased)), total);
+
+      // Already loaded? Use it — avoids a round trip for the common case of
+      // jumping inside what is on screen.
+      const local = latest.current.queue[n - 1];
+      if (local) {
+        void goTo(local.asset_id);
+        return;
+      }
+      try {
+        const res = await annotationApi.getQueue(dsId, {
+          status: latest.current.queueFilter === "all" ? undefined : latest.current.queueFilter,
+          skip: n - 1,
+          limit: 1,
+        });
+        const target = res.data.items[0];
+        if (target) void goTo(target.asset_id);
+      } catch {
+        /* a failed jump must not break the editor; the user can retry */
+      }
     },
-    [goTo]
+    [goTo, dsId]
   );
 
   /** Copy every annotation from the previous image onto this one.
@@ -1905,7 +1932,7 @@ export default function AnnotateEditor() {
             className="ann-header__jump"
             type="number"
             min={1}
-            max={queue.length || 1}
+            max={queueTotal || 1}
             placeholder="#"
             value={jumpValue}
             onChange={(e) => setJumpValue(e.target.value)}
@@ -1914,7 +1941,7 @@ export default function AnnotateEditor() {
               e.preventDefault();
               const n = Number(jumpValue);
               if (Number.isFinite(n) && n >= 1) {
-                jumpToIndex(n);
+                void jumpToIndex(n);
                 setJumpValue("");
                 // Return focus to the canvas so the single-key shortcuts work
                 // again — they are ignored while an input has focus.
@@ -1922,7 +1949,7 @@ export default function AnnotateEditor() {
               }
             }}
             title="Jump to image number (Enter)"
-            disabled={queue.length === 0}
+            disabled={queueTotal === 0}
           />
         </div>
         <span className={`ann-save ann-save--${saveMod}`}>{saveLabel}</span>

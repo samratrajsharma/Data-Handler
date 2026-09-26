@@ -308,7 +308,21 @@ export default function DashboardLayout() {
                 hides, which previously left the top of the rail as an empty
                 60px bar above the first icon. It also restores a home target on
                 the rail, which otherwise had none. */}
-            <span className="dash__mark" aria-hidden="true">DH</span>
+            {/* A mark, not two letters in a box.
+                "DH" set at 12px inside a 30px square reads as a placeholder —
+                it is text that has not been designed yet, and no amount of
+                colour fixes that. This is the thing the product actually does:
+                a selection rectangle with its top-left grab handle, which is
+                the first shape any user of this app draws. Stroked rather than
+                filled so it sits at the same visual weight as the nav icons
+                under it instead of being a solid orange slab above them. */}
+            <span className="dash__mark" aria-hidden="true">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="5.5" width="16" height="13" rx="2.5" strokeWidth="2" />
+                <circle cx="4" cy="5.5" r="2.5" fill="currentColor" stroke="none" />
+              </svg>
+            </span>
             <span className="dash__brand">Data Handler</span>
           </Link>
           {/* Pin, not collapse: unpinned already collapses itself on mouse-out,
@@ -334,11 +348,24 @@ export default function DashboardLayout() {
           {TOP_ITEMS.map(renderItem)}
         </nav>
 
-        {/* Workspace switch */}
+        {/* Workspace switch.
+            On the rail, only the ACTIVE mode is rendered — the other two are
+            dropped from the DOM, not just hidden.
+
+            Why: the expanded switch is a horizontal segmented control of three
+            items. Collapsing it used to turn that into a vertical stack of
+            three, so the row became a column mid-animation and everything below
+            it jumped down by two rows. Reading which one was selected out of
+            three identical-sized icons was also guesswork.
+
+            Showing one item means the control keeps a single row in both
+            states, nothing below it moves, and the rail answers the only
+            question it has room for: which mode am I in. The full switch is one
+            hover away. */}
         <div className="dash__modes" role="tablist" aria-label="Workspace">
           {MODES.map((m) => (
             <button key={m.id} type="button" role="tab" aria-selected={mode === m.id}
-              className={`dash__mode ${mode === m.id ? "dash__mode--active" : ""}`}
+              className={`dash__mode ${mode === m.id ? "dash__mode--active" : "dash__mode--idle"}`}
               onClick={() => selectMode(m.id)} title={`${m.label} tools`}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

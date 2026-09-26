@@ -176,3 +176,6 @@ postgres_data/
 # --- Google Drive sync temp files ---
 .tmp.driveupload/
 .tmp.drivedownload/
+
+# Internal planning docs — kept local, never published to the public repo.
+COLLAB_PLAN.md

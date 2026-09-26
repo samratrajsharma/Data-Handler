@@ -158,6 +158,39 @@ def export_image_annotations(
 
         files, image_targets, warnings = builder(images, class_names)
 
+        # ── Split reporting ─────────────────────────────────────────────
+        # `_split_of()` falls back to "train" for any image with no split
+        # assigned, because YOLO, VOC and COCO all address images through
+        # split directories — a flat export is not a valid layout for them.
+        #
+        # That fallback is correct and completely invisible, which is the
+        # problem: exporting with no split produces a train/ folder holding
+        # 100% of the data, and exporting after an auto-split that assigned
+        # nothing produces exactly the same thing. Both look like a working
+        # 70/20/10 split until someone checks the counts.
+        #
+        # So the export now says which of the two happened.
+        # NB: read split_map, NOT img["split"] — the dict above already applies
+        # the `or "train"` fallback, so by that point every image claims a split
+        # and the count would always be 100%.
+        assigned = sum(
+            1 for img in images
+            if split_map.get(img["asset_id"]) in ("train", "valid", "test")
+        )
+        unassigned = len(images) - assigned
+        if images and assigned == 0:
+            warnings.append(
+                f"No train/valid/test split is assigned, so all {len(images)} "
+                "image(s) were written to train/. This is NOT a 70/20/10 split "
+                "— use Auto-split before exporting if you want one."
+            )
+        elif unassigned:
+            warnings.append(
+                f"{unassigned} image(s) had no split assigned and were placed in "
+                f"train/ alongside the {assigned} that did. Re-run Auto-split to "
+                "cover the whole dataset."
+            )
+
         # Surface how many images were dropped / defaulted-out so the caller
         # can see why the export count is smaller than the dataset.
         if rejected_excluded:
